@@ -111,7 +111,10 @@ def init():
             base=os.getenv("YANFOLIO_AI_BASE_URL","http://127.0.0.1:18769/v1").rstrip("/")
             model=os.getenv("YANFOLIO_AI_MODEL","Yanfolio-Qwen2.5-1.5B")
             c.execute("INSERT INTO models(label,model,base,secret,fee,input_rate,output_rate,max_output) VALUES(?,?,?,?,?,?,?,?)",
-                      ("学术基础",model,base,protect(os.getenv("YANFOLIO_AI_KEY","")),2,0,0,768))
+                      ("研究写作 · 标准",model,base,protect(os.getenv("YANFOLIO_AI_KEY","")),2,0,0,768))
+            if os.getenv("YANFOLIO_FAST_BASE_URL"):
+                c.execute("INSERT INTO models(label,model,base,fee,input_rate,output_rate,max_output) VALUES(?,?,?,1,0,0,384)",
+                          ("快速润色 · 轻量", "Yanfolio-Qwen2.5-0.5B",os.environ["YANFOLIO_FAST_BASE_URL"]))
         if not c.execute("SELECT 1 FROM packs").fetchone():
             c.executemany("INSERT INTO packs(label,points,cents) VALUES(?,?,?)",[("研究入门",100,1000),("论文写作",550,5000),("课题研究",1200,10000)])
 

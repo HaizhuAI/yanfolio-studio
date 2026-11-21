@@ -79,7 +79,10 @@ def runtime():
     url = f"https://github.com/ggml-org/llama.cpp/releases/download/{BUILD}/{ASSET}"
     archive = download(url,ASSET,33712292,RUNTIME_SHA,1024*1024,8)
     with ZipFile(archive) as z:
-        z.extractall(ROOT/"llama")
+        for item in z.infolist():
+            path=ROOT/"llama"/item.filename
+            if not path.is_file() or path.stat().st_size!=item.file_size:
+                z.extract(item,ROOT/"llama")
 
 
 def model(modelscope):
