@@ -31,3 +31,13 @@
 !/app/static/geist.woff2
 !/app/static/geist-license.txt
 !/app/static/yanfolio.ico
+!/app/deck_assets/
+!/app/deck_assets/*.pptx
+!/app/deck_assets/*.webp
+!/app/deck_assets/*.json
+!/app/deck_assets/*.txt
+!/app/deck_assets/*.md
+!/app/static/fonts/
+!/app/static/fonts/*.woff2
+!/app/static/fonts/*.txt
+!/app/static/fonts/*.md

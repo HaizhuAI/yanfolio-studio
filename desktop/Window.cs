@@ -11,6 +11,7 @@ using Microsoft.Web.WebView2.WinForms;
 
 internal sealed class RailButton : Button {
     internal bool Selected;
+    internal bool DarkMode=true;
     private bool hovering;
     private readonly string glyph;
     internal RailButton(string caption,string name,string symbol) {
@@ -28,14 +29,15 @@ internal sealed class RailButton : Button {
         var g=e.Graphics;g.SmoothingMode=SmoothingMode.AntiAlias;g.Clear(BackColor);
         var rect=new Rectangle(1,1,Width-3,Height-3);
         using(var path=Rounded(rect,9)) {
-            if(Selected||hovering){using(var brush=new SolidBrush(Selected?Color.FromArgb(55,49,80):Color.FromArgb(38,38,55)))g.FillPath(brush,path);}
+            if(Selected||hovering){using(var brush=new SolidBrush(DarkMode?(Selected?Color.FromArgb(55,49,80):Color.FromArgb(38,38,55)):(Selected?Color.FromArgb(222,216,250):Color.FromArgb(227,226,236))))g.FillPath(brush,path);}
             if(Focused&&ShowFocusCues){using(var outline=new Pen(Color.FromArgb(179,165,255),1.4f))g.DrawPath(outline,path);}
         }
-        var fg=Selected?Color.FromArgb(220,211,255):Color.FromArgb(202,202,220);
+        var fg=DarkMode?(Selected?Color.FromArgb(220,211,255):Color.FromArgb(202,202,220)):(Selected?Color.FromArgb(68,53,145):Color.FromArgb(72,70,91));
         var state=g.Save();float scale=Math.Max(.85f,Height/58f);g.TranslateTransform(Width/2f-12*scale,7*scale);g.ScaleTransform(scale,scale);
         using(var pen=new Pen(fg,1.65f)){
             pen.StartCap=pen.EndCap=LineCap.Round;pen.LineJoin=LineJoin.Round;
             if(glyph=="write"){g.DrawPolygon(pen,new[]{new Point(4,19),new Point(5,15),new Point(16,4),new Point(20,8),new Point(9,19)});g.DrawLine(pen,14,6,18,10);}
+            else if(glyph=="slides"){g.DrawRectangle(pen,3,4,18,13);g.DrawLine(pen,12,17,12,21);g.DrawLine(pen,7,21,17,21);}
             else if(glyph=="folder"){g.DrawPolygon(pen,new[]{new Point(3,6),new Point(10,6),new Point(12,8),new Point(21,8),new Point(21,19),new Point(3,19)});}
             else if(glyph=="profile"){g.DrawEllipse(pen,8,3,8,8);g.DrawArc(pen,4,13,16,12,180,180);}
             else if(glyph=="wallet"){g.DrawRectangle(pen,3,7,18,13);g.DrawLines(pen,new[]{new Point(3,7),new Point(4,5),new Point(16,3),new Point(17,7)});g.DrawRectangle(pen,15,11,6,5);}
@@ -59,6 +61,7 @@ internal sealed class Workspace : Form {
     private readonly Dictionary<string,RailButton> buttons=new Dictionary<string,RailButton>();
     private readonly string profile=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Yanfolio","Browser");
     private Uri endpoint;
+    private bool darkShell;
     private RailButton connection;
     private string ConfigFile {get{return Path.Combine(profile,"service.txt");}}
     private static readonly Color Night=Color.FromArgb(17,18,30);
@@ -77,6 +80,7 @@ internal sealed class Workspace : Form {
         var top=new Panel(){Name="top",Height=78,Dock=DockStyle.Top,BackColor=Night};top.Controls.Add(mark);
         var routes=new FlowLayoutPanel(){Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Night};
         AddRoute(routes,"写作","写作工作台","write","/studio","Ctrl+1");
+        AddRoute(routes,"演示","PPT 制作","slides","/slides","Ctrl+5");
         AddRoute(routes,"文档","我的云文档","folder","/drive.html","Ctrl+2");
         AddRoute(routes,"账号","个人中心","profile","/profile.html","Ctrl+3");
         AddRoute(routes,"点数","点数钱包","wallet","/wallet.html","Ctrl+4");
@@ -89,7 +93,7 @@ internal sealed class Workspace : Form {
         var retry=new Button(){Text="重试连接",Dock=DockStyle.Right,Width=92,FlatStyle=FlatStyle.Flat,BackColor=Color.White};retry.Click+=(s,e)=>Go("/profile.html");
         errorBar.Controls.Add(errorText);errorBar.Controls.Add(retry);content.Controls.Add(view);content.Controls.Add(errorBar);
         Controls.Add(content);Controls.Add(rail);
-        Shown+=(s,e)=>ApplyChromeScale();
+        Shown+=(s,e)=>{ApplyChromeScale();ApplyShellTheme(SystemDark());};
         Load+=async (sender,evt)=>{
             try{
                 Directory.CreateDirectory(profile);Uri stored;
@@ -97,8 +101,13 @@ internal sealed class Workspace : Form {
                 tips.SetToolTip(connection,"服务地址   "+endpoint.Authority);
                 var env=await CoreWebView2Environment.CreateAsync(null,profile);
                 await view.EnsureCoreWebView2Async(env);
-                view.CoreWebView2.Settings.UserAgent+=" YanfolioDesktop/2.2";
-                view.CoreWebView2.Settings.AreHostObjectsAllowed=false;view.CoreWebView2.Settings.IsWebMessageEnabled=false;
+                view.CoreWebView2.Settings.UserAgent+=" YanfolioDesktop/2.3";
+                view.CoreWebView2.Settings.AreHostObjectsAllowed=false;view.CoreWebView2.Settings.IsWebMessageEnabled=true;
+                view.CoreWebView2.WebMessageReceived+=(s,e)=>{
+                    Uri origin;if(!Uri.TryCreate(e.Source,UriKind.Absolute,out origin)||!SameHost(origin))return;
+                    string value;try{value=e.TryGetWebMessageAsString();}catch(ArgumentException){return;}catch(InvalidOperationException){return;}
+                    if(value=="yanfolio.theme.dark"||value=="yanfolio.theme.light")ApplyShellTheme(value.EndsWith(".dark"));
+                };
                 view.CoreWebView2.NavigationStarting+=(s,e)=>{
                     Uri next;if(!Uri.TryCreate(e.Uri,UriKind.Absolute,out next)){e.Cancel=true;return;}
                     if(next.Scheme=="blob"){Uri inner;if(Uri.TryCreate(e.Uri.Substring(5),UriKind.Absolute,out inner)&&SameHost(inner))return;}
@@ -111,7 +120,23 @@ internal sealed class Workspace : Form {
             }catch(Exception ex){errorBar.Visible=true;errorText.Text="桌面运行环境未就绪。";MessageBox.Show("请检查 WebView2 Evergreen Runtime 和服务地址。\n"+ex.Message,Text);}
         };
     }
-    protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);try{int dark=1,bg=0x001e1211,fg=0x00f4f0ef;DwmSetWindowAttribute(Handle,20,ref dark,4);DwmSetWindowAttribute(Handle,35,ref bg,4);DwmSetWindowAttribute(Handle,36,ref fg,4);}catch(DllNotFoundException){}catch(EntryPointNotFoundException){}}
+    private static bool SystemDark(){
+        try{using(var key=Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")){
+            return key!=null && Convert.ToInt32(key.GetValue("AppsUseLightTheme",1))==0;
+        }}catch(System.Security.SecurityException){return false;}
+    }
+    private void ApplyShellTheme(bool dark){
+        darkShell=dark;var bg=dark?Night:Color.FromArgb(241,241,248);
+        int useDark=dark?1:0,caption=ColorTranslator.ToWin32(bg),text=ColorTranslator.ToWin32(dark?Color.White:Color.FromArgb(45,42,61));
+        try{DwmSetWindowAttribute(Handle,20,ref useDark,4);DwmSetWindowAttribute(Handle,35,ref caption,4);DwmSetWindowAttribute(Handle,36,ref text,4);}
+        catch(DllNotFoundException){}catch(EntryPointNotFoundException){}
+        var rail=Controls["rail"];if(rail==null)return;
+        rail.BackColor=bg;foreach(Control part in rail.Controls)part.BackColor=bg;
+        foreach(var b in buttons.Values){b.DarkMode=dark;b.BackColor=bg;b.Invalidate();}
+        connection.DarkMode=dark;connection.BackColor=bg;connection.Invalidate();
+        view.DefaultBackgroundColor=dark?Color.FromArgb(22,23,33):Color.FromArgb(246,246,251);
+        errorBar.BackColor=bg;errorText.ForeColor=dark?Color.White:Color.FromArgb(45,42,61);
+    }
     private void ApplyChromeScale(){
         if(IsDisposed||!Controls.ContainsKey("rail"))return;
         float dpi=96;try{dpi=GetDpiForWindow(Handle);}catch(EntryPointNotFoundException){using(var graphics=CreateGraphics())dpi=graphics.DpiX;}
@@ -129,7 +154,7 @@ internal sealed class Workspace : Form {
     protected override bool ProcessCmdKey(ref Message msg,Keys keyData){
         if(keyData==(Keys.Control|Keys.Oemcomma)){Configure();return true;}
         if(keyData==(Keys.Control|Keys.K)&&view.CoreWebView2!=null){view.CoreWebView2.ExecuteScriptAsync("window.YanUI?.openNavigator?.()");return true;}
-        var routes=new[]{"/studio","/drive.html","/profile.html","/wallet.html"};
+        var routes=new[]{"/studio","/drive.html","/profile.html","/wallet.html","/slides"};
         for(int i=0;i<routes.Length;i++)if(keyData==(Keys.Control|(Keys)((int)Keys.D1+i))){Go(routes[i]);return true;}
         return base.ProcessCmdKey(ref msg,keyData);
     }
@@ -140,7 +165,7 @@ internal sealed class Workspace : Form {
     private void Configure(){
         using(var dialog=new Form()){
             dialog.Text="连接服务器 · 砚稿";dialog.Icon=Icon;dialog.ClientSize=new Size(445,189);dialog.StartPosition=FormStartPosition.CenterParent;
-            dialog.FormBorderStyle=FormBorderStyle.FixedDialog;dialog.MaximizeBox=false;dialog.MinimizeBox=false;dialog.BackColor=Color.FromArgb(248,248,252);dialog.Font=Font;
+            dialog.FormBorderStyle=FormBorderStyle.FixedDialog;dialog.MaximizeBox=false;dialog.MinimizeBox=false;dialog.BackColor=darkShell?Color.FromArgb(33,33,45):Color.FromArgb(248,248,252);dialog.ForeColor=darkShell?Color.White:Color.Black;dialog.Font=Font;
             var title=new Label(){Left=22,Top=17,Width=360,Height=29,Font=new Font(Font.FontFamily,13,FontStyle.Bold),Text="服务地址"};
             var note=new Label(){Left=23,Top=52,Width=400,Height=23,Text="输入运营方的 HTTPS 根地址，或本机回环地址。"};
             var box=new TextBox(){Left=23,Top=82,Width=395,Text=endpoint==null?BuildConfig.ServiceUrl:endpoint.AbsoluteUri,AccessibleName="服务地址"};

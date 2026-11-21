@@ -15,6 +15,8 @@ def build():
     for suffix in ("*.html","*.js","*.css"):
         inputs.extend(sorted((ROOT/"app/static").glob(suffix)))
     inputs.extend(ROOT/"app/static"/n for n in ("yanfolio-field.webp","yanfolio-optic.webp","geist.woff2","geist-license.txt","yanfolio.ico"))
+    for folder,extensions in (("app/deck_assets",{".pptx",".webp",".json",".txt",".md"}),("app/static/fonts",{".woff2",".txt",".md"})):
+        inputs.extend(sorted(p for p in (ROOT/folder).iterdir() if p.is_file() and p.suffix.lower() in extensions))
     if (output/"Yanfolio.exe").is_file():
         inputs.append(output/"Yanfolio.exe")
     target=output/"Yanfolio-Web.zip"
