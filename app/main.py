@@ -123,6 +123,11 @@ def studio():
 
 @app.get("/health")
 def health():
+    with store.db() as c:
+        c.execute("SELECT free_bytes FROM cloud_config WHERE id=1").fetchone()
+    cloud_store.available_volume()
+    if not os.access(cloud_store.objects(),os.R_OK|os.W_OK):
+        raise HTTPException(503,"文档存储卷不可读写。")
     return {"service":"yanfolio","ok":True}
 
 

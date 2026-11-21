@@ -68,7 +68,7 @@ flowchart LR
 
 账号工作区按用户主键隔离，更新携带版本号。两个客户端同时编辑时，后提交的一端保留本机待同步内容，可选择将冲突手稿合并为独立副本。旧版浏览器草稿经当前使用者确认后才导入账号。Word 文件在内存中处理，格式副本按需下载。文稿正文以账号工作区数据保存，运营部署应限制数据库卷和备份的访问权限。
 
-定期备份数据库与主密钥；对在线 SQLite 使用 backup API 或停服后复制完整数据目录，避免只复制正在写入的数据库文件。恢复必须使用原主密钥，才能解密模型凭据和暂存结果。采用自管主密钥时设置 YANFOLIO_MASTER_KEY 为 Fernet 格式；未指定时在持久卷生成。多台 API 同时写入时需迁移数据库和共享限流／任务协调机制。本版按单实例验收。
+运营备份使用 scripts/cloud_backup.py 同时取得数据库与私有文档卷的一致快照，主密钥单独保管。恢复必须使用原主密钥，才能解密模型凭据和暂存结果。采用自管主密钥时设置 YANFOLIO_MASTER_KEY 为 Fernet 格式；未指定时在持久卷生成。多台 API 同时写入时需迁移数据库和共享限流／任务协调机制。本版按单实例验收。
 
 生产入口设为 HTTPS，配置独立 SMTP，持久化服务卷。管理员通过服务端命令创建。登录页仅在回环环境且未配 SMTP 时使用本机测试信箱。EXE 使用 Windows x64 和 WebView2 Evergreen Runtime，本次构建未做 Authenticode 发行签名。微软的运行时分发方式及支持环境见[官方分发说明](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)。
 
