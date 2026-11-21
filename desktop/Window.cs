@@ -65,7 +65,10 @@ internal sealed class Workspace : Form {
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr handle,int attribute,ref int value,int size);
 
     internal Workspace(){
-        Text="砚稿 · Yanfolio";Width=1410;Height=920;MinimumSize=new Size(760,540);StartPosition=FormStartPosition.CenterScreen;
+        var screen=Screen.FromPoint(Cursor.Position).WorkingArea;
+        MinimumSize=new Size(Math.Min(760,screen.Width),Math.Min(540,screen.Height));
+        Text="砚稿 · Yanfolio";Width=Math.Min(1410,(int)(screen.Width*.91));Height=Math.Min(920,(int)(screen.Height*.91));
+        StartPosition=FormStartPosition.CenterScreen;
         AutoScaleDimensions=new SizeF(96,96);AutoScaleMode=AutoScaleMode.Dpi;Font=new Font("Microsoft YaHei UI",9f);
         Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);BackColor=Color.FromArgb(246,246,251);
         var rail=new Panel(){Dock=DockStyle.Left,Width=82,BackColor=Night};
@@ -113,6 +116,7 @@ internal sealed class Workspace : Form {
     private void SetActive(Uri uri){if(uri==null)return;foreach(var item in buttons){item.Value.Selected=uri.AbsolutePath==item.Key;item.Value.Invalidate();}}
     protected override bool ProcessCmdKey(ref Message msg,Keys keyData){
         if(keyData==(Keys.Control|Keys.Oemcomma)){Configure();return true;}
+        if(keyData==(Keys.Control|Keys.K)&&view.CoreWebView2!=null){view.CoreWebView2.ExecuteScriptAsync("window.YanUI?.openNavigator?.()");return true;}
         var routes=new[]{"/studio","/drive.html","/profile.html","/wallet.html"};
         for(int i=0;i<routes.Length;i++)if(keyData==(Keys.Control|(Keys)((int)Keys.D1+i))){Go(routes[i]);return true;}
         return base.ProcessCmdKey(ref msg,keyData);

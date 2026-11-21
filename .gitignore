@@ -21,6 +21,7 @@
 !/.dockerignore
 !/desktop/
 !/desktop/*.cs
+!/desktop/app.manifest
 !/deploy/
 !/deploy/Dockerfile
 !/deploy/Caddyfile
