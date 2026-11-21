@@ -11,6 +11,8 @@ from typing import Literal
 
 from . import store as s
 from .accounts import current
+from .slide_content import Deck,outline_schema,parse_outline
+from . import slides
 
 router=APIRouter()
 EXPERTS={
@@ -45,7 +47,9 @@ class Manuscript(BaseModel):
 
 
 class Writing(Manuscript):
-    action:Literal["outline","draft","polish","review"]
+    action:Literal["outline","draft","polish","review","slides"]
+    page_count:int=Field(default=5,ge=3,le=8)
+    template_id:str=Field(default="",max_length=48)
     instruction:str=Field(default="",max_length=2000)
     selection:str=Field(default="",max_length=20000)
     model_id:int=Field(ge=1)
@@ -77,6 +81,15 @@ def plan(req):
     expert=resolve(req)
     refs=[{"编号":i,"题名":r.title,"年份":r.year,"DOI":r.doi} for i,r in enumerate(req.references,1)]
     data=json.dumps({"研究题目":req.title,"作者要求":req.instruction,"原文":excerpt,"题录":refs},ensure_ascii=False)
+    if req.action=="slides":
+        slides.check_theme(req.template_id)
+        if req.level=="peer":
+            raise HTTPException(422,"演示初稿使用单次生成；请在编辑器中复核每页。")
+        count=req.page_count
+        instruction=(f"请制作恰好 {count} 页中文学术演示。只返回一个 JSON 对象，键 pages，值是 {count} 个字符串。"
+            "每个字符串为 标题｜要点一｜要点二。封面与收束页只写 标题｜一句副标题。每段不超过 20 个汉字，"
+            "每页聚焦一个论点。可从研究问题、方法、证据局限、下一步组织。不要虚构已经完成的实验。")
+        return expert,[{"role":"system","content":GUARD+"\n"+EXPERTS[expert][2]+"\n"+instruction},{"role":"user","content":data}]
     messages=[{"role":"system","content":"\n".join([GUARD,EXPERTS[expert][2],LEVELS[req.level][1],TASKS[req.action]])},
               {"role":"user","content":data}]
     return expert,messages
@@ -87,7 +100,10 @@ def price(model,input_tokens,output_tokens,passes):
 
 
 def basis(req):
-    return s.digest(json.dumps(req.model_dump(exclude={"request_id","quote"}),sort_keys=True,ensure_ascii=False))
+    exclude={"request_id","quote"}
+    if req.action!="slides":
+        exclude.update(("page_count","template_id"))
+    return s.digest(json.dumps(req.model_dump(exclude=exclude),sort_keys=True,ensure_ascii=False))
 
 
 def quote(req,model,messages):
@@ -133,11 +149,14 @@ def preflight(req:Writing,request:Request):
             "balance":current(request)["balance"],"label":model["label"]}
 
 
-async def invoke(client,model,messages):
+async def invoke(client,model,messages,schema=None):
     secret=s.reveal(model["secret"])
+    payload={"model":model["model"],"messages":messages,"max_tokens":model["max_output"],"stream":False}
+    if schema and model["model"] in ("Yanfolio-Qwen2.5-0.5B","Yanfolio-Qwen2.5-1.5B"):
+        payload["response_format"]={"type":"json_schema","json_schema":{"name":"slide_outline","strict":True,"schema":schema}}
     response=await client.post(model["base"].rstrip("/")+"/chat/completions",
         headers={"Authorization":"Bearer "+secret} if secret else {},
-        json={"model":model["model"],"messages":messages,"max_tokens":model["max_output"],"stream":False})
+        json=payload)
     response.raise_for_status()
     payload=response.json()
     text=payload["choices"][0]["message"]["content"]
@@ -172,7 +191,13 @@ async def execute(req:Execution,request:Request):
         c.execute("INSERT INTO jobs(id,uid,fingerprint,status,reserved,created) VALUES(?,?,?,'pending',?,?)",(rid,uid,fingerprint,maximum,s.now()))
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(120,connect=10)) as client:
-            text,counts,reported=await invoke(client,model,messages)
+            deck=None
+            if req.action=="slides":
+                text,counts,reported=await invoke(client,model,messages,outline_schema(req.page_count))
+                pages=parse_outline(text,req.page_count)
+                deck=Deck(title=(req.title.strip() or pages[0].title)[:120],template=req.template_id,slides=pages)
+            else:
+                text,counts,reported=await invoke(client,model,messages)
             passes=1
             if req.level=="peer":
                 messages.extend([{"role":"assistant","content":text},{"role":"user","content":"作为复核编辑，对照原文逐项复核数字、引文、因果措辞与材料缺口。纠正草案，按最初任务仅输出最终结果。"}])
@@ -193,6 +218,9 @@ async def execute(req:Execution,request:Request):
             result={"suggestion":text,"model":model["label"],"expert":EXPERTS[expert][0],"passes":passes,"charged":charged,"balance":balance,
                     "usage":{"input":counts[0],"output":counts[1],"reported":reported},"unlinked_citations":unlinked,
                     "new_percentages":sorted(numbers(text)-numbers(source))}
+            if deck is not None:
+                version=slides.store_draft(c,uid,rid,deck)
+                result["presentation"]={"id":rid,"version":version,"deck":deck.model_dump()}
             c.execute("INSERT INTO usage VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
                       (uid,rid,model["id"],model["label"],EXPERTS[expert][0],LEVELS[req.level][0],*counts,passes,charged,reported,s.now()))
             c.execute("UPDATE jobs SET status='done',charged=?,result=? WHERE uid=? AND id=?",

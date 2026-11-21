@@ -155,10 +155,8 @@ def _import(raw,filename,theme):
             layout=page._element.cSld.get("name","").removeprefix("Yanfolio:")
             notes=page.notes_slide.notes_text_frame.text if page.has_notes_slide and page.notes_slide.notes_text_frame else ""
             if native and layout in render.LAYOUTS:
-                fields={sh.name:sh.text.replace("\v","") for sh in page.shapes if sh.has_text_frame and sh.name in render.SLOTS and sh.name!="footer"}
-                # Join soft visual breaks without losing Latin word boundaries.
                 fields={sh.name:"\n".join("".join(run.text for run in p.runs) for p in sh.text_frame.paragraphs)
-                        for sh in page.shapes if sh.has_text_frame and sh.name in fields}
+                        for sh in page.shapes if sh.has_text_frame and sh.name in render.SLOTS and sh.name!="footer"}
                 slides.append(Slide(layout=layout,notes=notes,**fields))
             else:
                 boxes=[sh.text.strip().replace("\v"," ") for sh in page.shapes if sh.has_text_frame and sh.text.strip()]

@@ -54,11 +54,12 @@ def _wrap(text,limit):
     width=0
     for token in re.findall(r"[A-Za-z0-9]+|\s+|.",text):
         tw=sum(_em(ch) for ch in token)
-        if line and width+tw>limit:
-            rows.append(line.rstrip())
-            line="";width=0
-        if not line and token.isspace():
+        if token.isspace():
+            line+=token;width+=tw
             continue
+        if line and width+tw>limit:
+            rows.append(line)
+            line="";width=0
         if tw>limit:
             for ch in token:
                 cw=_em(ch)
@@ -68,7 +69,7 @@ def _wrap(text,limit):
         else:
             line+=token;width+=tw
     if line or not rows:
-        rows.append(line.rstrip())
+        rows.append(line)
     return rows
 
 
@@ -152,6 +153,7 @@ def export(deck):
     template_ids=list(prs.slides._sldIdLst)
     for i,data in enumerate(deck.slides,1):
         slide=_clone(prs,prototypes[data.layout])
+        slide._element.cSld.set("name","Yanfolio:"+data.layout)
         overflow=_populate(slide,data,i,len(deck.slides),deck.title)
         if overflow:
             raise ValueError(f"第 {i} 页文字超出模板可读范围，请精简或拆页。")
@@ -161,6 +163,7 @@ def export(deck):
         prs.part.drop_rel(item.rId)
         prs.slides._sldIdLst.remove(item)
     prs.core_properties.title=deck.title
+    prs.core_properties.keywords="Yanfolio:"+deck.template
     prs.core_properties.author="Yanfolio"
     prs.core_properties.last_modified_by="Yanfolio"
     output=BytesIO();prs.save(output)

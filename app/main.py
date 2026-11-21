@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from pypdf import PdfReader
 from starlette.concurrency import run_in_threadpool
 
-from . import formatting, literature, accounts, agent, commerce, control, store, cloud, cloud_control, cloud_store
+from . import formatting, literature, accounts, agent, commerce, control, store, cloud, cloud_control, cloud_store, slides
 from .agent import Manuscript
 
 @asynccontextmanager
@@ -55,7 +55,7 @@ async def invalid_fields(request, exc):
     return JSONResponse({"detail":"输入字段格式有误："+fields},422)
 
 
-for router in (accounts.router,agent.router,commerce.router,control.router,cloud.router,cloud_control.router):
+for router in (accounts.router,agent.router,commerce.router,control.router,cloud.router,cloud_control.router,slides.router):
     app.include_router(router)
 TYPES = {"docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
 FILES_MAX = 16*1024*1024
@@ -94,7 +94,7 @@ async def access(request, call_next):
         if user is None:
             if path.startswith("/api/"):
                 return JSONResponse({"detail":"请先登录。"},401)
-            target="/login.html?next="+path if path in ("/admin.html","/wallet.html","/studio","/profile.html","/drive.html") else "/login.html"
+            target="/login.html?next="+path if path in ("/admin.html","/wallet.html","/studio","/slides","/profile.html","/drive.html") else "/login.html"
             return RedirectResponse(target,303,headers={"Cache-Control":"no-store"})
         if (path.startswith("/api/admin/") or path in ("/admin.html","/admin.js")) and user["role"]!="admin":
             return JSONResponse({"detail":"需要管理员权限。"},403)
@@ -120,6 +120,11 @@ def landing_art():
     return FileResponse(Path(__file__).parent/"static"/"yanfolio-field.webp",media_type="image/webp")
 
 
+@app.get("/slides")
+def slides_editor():
+    return FileResponse(Path(__file__).parent/"static"/"slides.html")
+
+
 @app.get("/studio")
 def studio():
     return FileResponse(Path(__file__).parent/"static"/"index.html")
@@ -142,7 +147,7 @@ def desktop_binary():
 @app.get("/api/auth/options")
 def public_options(request:Request):
     return {"desktop":desktop_binary().is_file(),"signed_in":accounts.identity(request) is not None,
-            "client_version":"2.2","free_document_bytes":cloud_store.FREE_BYTES}
+            "client_version":"2.3","free_document_bytes":cloud_store.FREE_BYTES}
 
 
 @app.get("/desktop/download")
