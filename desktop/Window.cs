@@ -104,6 +104,7 @@ internal sealed class Workspace : Form {
                 tips.SetToolTip(connection,"服务地址   "+endpoint.Authority);
                 var env=await CoreWebView2Environment.CreateAsync(null,profile);
                 await view.EnsureCoreWebView2Async(env);
+                view.CoreWebView2.Profile.PreferredColorScheme=CoreWebView2PreferredColorScheme.Auto;
                 view.CoreWebView2.Settings.UserAgent+=" YanfolioDesktop/2.3";
                 view.CoreWebView2.Settings.AreHostObjectsAllowed=false;view.CoreWebView2.Settings.IsWebMessageEnabled=true;
                 view.CoreWebView2.WebMessageReceived+=(s,e)=>{

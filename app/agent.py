@@ -6,6 +6,7 @@ from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from typing import Literal
 
@@ -197,6 +198,8 @@ async def execute(req:Execution,request:Request):
                 text,counts,reported=await invoke(client,model,messages,outline_schema(req.page_count))
                 pages=parse_outline(text,req.page_count)
                 deck=Deck(title=(req.title.strip() or pages[0].title)[:120],template=req.template_id,slides=pages)
+                # Settle only after both the outline and its editable PowerPoint layout are valid.
+                await run_in_threadpool(slides.render.export,deck)
             else:
                 text,counts,reported=await invoke(client,model,messages)
             passes=1

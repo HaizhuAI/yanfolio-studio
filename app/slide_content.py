@@ -33,6 +33,14 @@ class Deck(BaseModel):
     template:str=Field(min_length=1,max_length=48)
     slides:list[Slide]=Field(min_length=1,max_length=32)
 
+    @field_validator("title")
+    @classmethod
+    def valid_title(cls,value):
+        value=value.strip()
+        if not value or any(ord(ch)<32 for ch in value):
+            raise ValueError("演示稿名称需要可见文本。")
+        return value
+
 
 def outline_schema(count):
     fields={name+str(i):{"type":"string"} for i in range(1,count+1) for name in ("t","p")}

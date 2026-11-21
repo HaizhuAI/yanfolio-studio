@@ -1,14 +1,12 @@
-from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from uuid import uuid4
 from zipfile import ZipFile
 import json
 
-from lxml import etree
 from pptx import Presentation
 import pytest
 
-from app import agent,deck_render
+from app import agent
 from app.slide_content import Deck,Slide
 from conftest import seed,new_client
 

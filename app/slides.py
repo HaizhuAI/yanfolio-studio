@@ -4,6 +4,7 @@ from pathlib import Path,PurePosixPath
 from urllib.parse import quote
 from uuid import UUID
 from zipfile import BadZipFile,ZipFile
+from lxml.etree import XMLSyntaxError
 
 from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
@@ -132,7 +133,7 @@ def _import(raw,filename,theme):
     try:
         with ZipFile(BytesIO(raw)) as z:
             entries=z.infolist()
-            if (len(entries)>4000 or sum(i.file_size for i in entries)>90_000_000 or
+            if (len(entries)>4000 or len(entries)!=len(set(i.filename for i in entries)) or sum(i.file_size for i in entries)>90_000_000 or
                 any(i.file_size>25_000_000 or i.flag_bits&1 or ".." in PurePosixPath(i.filename).parts or
                     "vbaproject" in i.filename.lower() for i in entries)):
                 raise ValueError("PPTX 包过大、已加密或含有宏。")
@@ -149,7 +150,8 @@ def _import(raw,filename,theme):
         for i,page in enumerate(prs.slides):
             layout=page._element.cSld.get("name","").removeprefix("Yanfolio:")
             notes=page.notes_slide.notes_text_frame.text if page.has_notes_slide and page.notes_slide.notes_text_frame else ""
-            if native and layout in render.LAYOUTS:
+            named=[sh.name for sh in page.shapes if sh.has_text_frame and sh.text.strip()]
+            if native and layout in render.LAYOUTS and set(named)<=render.SLOTS and len(named)==len(set(named)):
                 fields={sh.name:"\n".join("".join(run.text for run in p.runs) for p in sh.text_frame.paragraphs)
                         for sh in page.shapes if sh.has_text_frame and sh.name in render.SLOTS and sh.name!="footer"}
                 slides.append(Slide(layout=layout,notes=notes,**fields))
@@ -163,7 +165,7 @@ def _import(raw,filename,theme):
         return Deck(title=(prs.core_properties.title or Path(filename).stem)[:120],template=theme,slides=slides)
     except ValidationError as exc:
         raise ValueError("原页文字超过可编辑页的容量，请先在 PowerPoint 中拆分过密的页面。") from exc
-    except (BadZipFile,KeyError,AttributeError,IndexError,TypeError,RuntimeError) as exc:
+    except (BadZipFile,KeyError,AttributeError,IndexError,TypeError,RuntimeError,XMLSyntaxError) as exc:
         raise ValueError("无法读取该 PPTX，请另存为标准 PowerPoint 演示文稿后再试。") from exc
 
 
