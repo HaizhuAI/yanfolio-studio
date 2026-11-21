@@ -77,3 +77,29 @@ def parse_outline(raw,count):
             output.append(Slide(layout="content",title=parts[0],body="\n".join(parts[1:])))
     return output
 
+
+def annotate_evidence(pages,source,references):
+    """Keep citation identities and concrete verification prompts in native speaker notes."""
+    original=set(re.findall(r"\d+(?:\.\d+)?%",source))
+    flagged=0
+    for slide in pages:
+        text="\n".join((slide.title,slide.body,slide.subtitle))
+        notes=[]
+        for n in sorted({int(v) for v in re.findall(r"\[(\d{1,5})\]",text)})[:8]:
+            if 1<=n<=len(references):
+                ref=references[n-1]
+                notes.append(f"[{n}] {ref.title[:120]} {ref.year} {(ref.doi or ref.url)[:110]}".strip())
+            else:
+                notes.append(f"需核对：引文 [{n}] 未出现在给定题录中。")
+        extra=sorted(set(re.findall(r"\d+(?:\.\d+)?%",text))-original)
+        if extra:
+            notes.append("需核对：材料中未找到的百分数 "+", ".join(extra))
+        for word in ("显著","证明","证实"):
+            if word in text and word not in source:
+                notes.append(f"需核对：“{word}”这一判断在所给材料中有无依据。")
+                break
+        if any(n.startswith("需核对") for n in notes):
+            flagged+=1
+        slide.notes="\n".join(notes)[:2000]
+    return flagged
+

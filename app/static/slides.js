@@ -108,7 +108,7 @@
    $("fields").replaceChildren(...slots[slide.layout].map(key=>{
     const [label,max]=controls[key],wrap=el("label",label),input=el(["title","left_title","right_title"].includes(key)?"input":"textarea");
     input.id="field-"+key;input.maxLength=max;input.value=slide[key]||"";if(input.tagName==="TEXTAREA")input.rows=key==="body"?7:3;
-    input.oninput=()=>{slide[key]=input.value;changed();if(key==="title")navigation();requestPreview();};wrap.append(input);return wrap;
+    input.oninput=()=>{slide[key]=input.value;changed();if(key==="title")$("page-list").children[page].querySelector("strong").textContent=slide.title||names[slide.layout];requestPreview();};wrap.append(input);return wrap;
    }));
    $("slide-notes").value=slide.notes||"";$("slide-eyebrow").value=slide.eyebrow||"";requestPreview();
  }
@@ -178,7 +178,7 @@
  };
  $("confirm-ai").onclick=async()=>{
   if(!pendingQuote?.canPay||creating)return;const {canPay,...body}=pendingQuote;creating=true;disabled(true);$("create-status").textContent="正在编排逐页大纲…";
-  try{const r=await api("/api/write","POST",body);openData(r.presentation);pendingQuote=null;$("create-dialog").close();message("已生成 "+r.presentation.deck.slides.length+" 页，实收 "+r.charged+" 点。");}
+  try{const r=await api("/api/write","POST",body);openData(r.presentation);pendingQuote=null;$("create-dialog").close();message("已生成 "+r.presentation.deck.slides.length+" 页，实收 "+r.charged+" 点。"+(r.flagged_pages?"有 "+r.flagged_pages+" 页的讲者备注含待核对项。":""));}
   catch(e){$("create-status").textContent=e.message;if(e.status&&e.status!==409){pendingQuote=null;$("quote").hidden=true;}}
   finally{creating=false;disabled(false);}
  };

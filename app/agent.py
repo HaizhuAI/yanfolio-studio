@@ -12,7 +12,7 @@ from typing import Literal
 
 from . import store as s
 from .accounts import current
-from .slide_content import Deck,outline_schema,parse_outline
+from .slide_content import Deck,annotate_evidence,outline_schema,parse_outline
 from . import slides
 
 router=APIRouter()
@@ -197,6 +197,7 @@ async def execute(req:Execution,request:Request):
             if req.action=="slides":
                 text,counts,reported=await invoke(client,model,messages,outline_schema(req.page_count))
                 pages=parse_outline(text,req.page_count)
+                flagged=annotate_evidence(pages,req.selection or req.text,req.references)
                 deck=Deck(title=(req.title.strip() or pages[0].title)[:120],template=req.template_id,slides=pages)
                 # Settle only after both the outline and its editable PowerPoint layout are valid.
                 await run_in_threadpool(slides.render.export,deck)
@@ -224,6 +225,7 @@ async def execute(req:Execution,request:Request):
                     "new_percentages":sorted(numbers(text)-numbers(source))}
             if deck is not None:
                 version=slides.store_draft(c,uid,rid,deck)
+                result["flagged_pages"]=flagged
                 result["presentation"]={"id":rid,"version":version,"deck":deck.model_dump()}
             c.execute("INSERT INTO usage VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
                       (uid,rid,model["id"],model["label"],EXPERTS[expert][0],LEVELS[req.level][0],*counts,passes,charged,reported,s.now()))
