@@ -2,6 +2,7 @@
 (async()=>{
  const $=id=>document.getElementById(id),el=YF.el, api=YF.api;
  let active=null,page=0,known=[],themes=[],sources=[],models=[],pendingQuote=null,creating=false,sourceRefs=[];
+ const previewCache=new Map();let observer=null;
  let previewSeq=0,saveTimer,previewTimer,saving=null,saved="",conflict=false;
  const names={cover:"封面",content:"正文",columns:"双栏",closing:"收尾"};
  const controls={title:["标题",90],subtitle:["副标题",240],body:["正文要点（每行一条）",950],left_title:["左栏标题",55],left_body:["左栏正文",480],right_title:["右栏标题",55],right_body:["右栏正文",480]};
@@ -49,7 +50,7 @@
  }
  async function openDraft(id){const v=await api("/api/slides/drafts/"+id);openData(v);}
  function openData(v){
-   active=v;page=0;saved=JSON.stringify(active.deck);conflict=false;
+   active=v;document.body.classList.add("edit-deck");page=0;saved=JSON.stringify(active.deck);conflict=false;
    try{const copy=JSON.parse(localStorage.getItem(localKey(v.id))||"null");
     if(copy?.deck&&JSON.stringify(copy.deck)!==saved){active.deck=copy.deck;conflict=copy.version!==v.version;}
    }catch{}
@@ -61,11 +62,31 @@
    const res=await api("/api/slides/drafts/"+id,"PUT",{version:0,deck});
    openData({id,version:res.version,deck});
  }
- $("back").onclick=async()=>{try{await flush();}catch(e){message(e.message);return;}active=null;previewSeq++;clearTimeout(previewTimer);$("editor").hidden=true;$("gallery").hidden=false;history.replaceState(null,"","/slides");await list();};
+ $("back").onclick=async()=>{try{await flush();}catch(e){message(e.message);return;}active=null;document.body.classList.remove("edit-deck");observer?.disconnect();previewSeq++;clearTimeout(previewTimer);$("editor").hidden=true;$("gallery").hidden=false;history.replaceState(null,"","/slides");await list();};
  $("copy-deck").onclick=()=>newData({...active.deck,title:(active.deck.title.slice(0,111)+"（本机副本）")}).catch(e=>message(e.message));
  $("reload-deck").onclick=async()=>{if(!confirm("放弃本机未同步修改，载入云端版？"))return;try{localStorage.removeItem(localKey(active.id));await openDraft(active.id);}catch(e){message(e.message);}};
+ function previewFor(i){
+   const data={template:active.deck.template,title:active.deck.title,slide:{...active.deck.slides[i],notes:""},number:i+1,total:active.deck.slides.length};
+   const key=JSON.stringify(data);
+   if(!previewCache.has(key)){
+     if(previewCache.size>=80)previewCache.delete(previewCache.keys().next().value);
+     const task=api("/api/slides/preview","POST",data).then(r=>({src:"data:image/svg+xml;charset=utf-8,"+encodeURIComponent(r.svg),overflow:r.overflow}));
+     previewCache.set(key,task);task.catch(()=>previewCache.delete(key));
+   }
+   return previewCache.get(key);
+ }
  function navigation(){
-   $("page-list").replaceChildren(...active.deck.slides.map((slide,i)=>{const b=button("",()=>{page=i;draw();},"slide-row");b.setAttribute("aria-current",i===page?"page":"false");b.append(el("span",String(i+1)),el("strong",slide.title||names[slide.layout]));return b;}));
+   observer?.disconnect();
+   observer=new IntersectionObserver(entries=>{for(const entry of entries){
+     if(!entry.isIntersecting)continue;const tile=entry.target;observer.unobserve(tile);
+     const i=Number(tile.dataset.index);if(!active||!active.deck.slides[i])continue;
+     previewFor(i).then(r=>{if(tile.isConnected)tile.querySelector("img").src=r.src;}).catch(()=>{});
+   }},{root:$("page-list"),rootMargin:"32px"});
+   $("page-list").replaceChildren(...active.deck.slides.map((slide,i)=>{
+     const b=button("",()=>{page=i;draw();},"slide-row");b.dataset.index=i;b.setAttribute("aria-current",i===page?"page":"false");
+     const img=el("img");img.alt="";const label=el("div",undefined,"slide-row-label");label.append(el("span",String(i+1)),el("strong",slide.title||names[slide.layout]));
+     b.append(img,label);observer.observe(b);return b;
+   }));
    const n=active.deck.slides.length;$("page-number").textContent=(page+1)+" / "+n+" · "+names[current().layout];$("show-count").textContent=(page+1)+" / "+n;
    for(const id of ["prev-page","show-prev","up"])$(id).disabled=page===0;
    for(const id of ["next-page","show-next","down"])$(id).disabled=page===n-1;
@@ -75,9 +96,9 @@
    const seq=++previewSeq;clearTimeout(previewTimer);
    previewTimer=setTimeout(async()=>{
     if(!active||seq!==previewSeq)return;
-    try{const res=await api("/api/slides/preview","POST",{template:active.deck.template,title:active.deck.title,slide:current(),number:page+1,total:active.deck.slides.length});
+    try{const res=await previewFor(page);
      if(seq!==previewSeq)return;
-     const src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(res.svg);$("slide-preview").src=src;$("show-image").src=src;
+     const src=res.src;$("slide-preview").src=src;$("show-image").src=src;const thumb=$("page-list").children[page]?.querySelector("img");if(thumb)thumb.src=src;
      $("preview-warning").textContent=res.overflow.length?"本页文字过多，请精简或拆页后导出。":"";
     }catch(e){if(seq===previewSeq)$("preview-warning").textContent=e.message;}
    },120);
@@ -95,7 +116,7 @@
  $("slide-eyebrow").oninput=e=>{current().eyebrow=e.target.value;changed();requestPreview();};
  $("deck-title").oninput=e=>{active.deck.title=e.target.value.trim()||"无题演示";changed();requestPreview();};
  $("layout").onchange=e=>{current().layout=e.target.value;changed();draw();};
- $("theme").onchange=e=>{active.deck.template=e.target.value;changed();requestPreview();};
+ $("theme").onchange=e=>{active.deck.template=e.target.value;changed();navigation();requestPreview();};
  function step(d){page=Math.max(0,Math.min(active.deck.slides.length-1,page+d));draw();}
  for(const [id,d] of [["prev-page",-1],["next-page",1],["show-prev",-1],["show-next",1]])$(id).onclick=()=>step(d);
  function move(d){const slides=active.deck.slides;if(!slides[page+d])return;[slides[page],slides[page+d]]=[slides[page+d],slides[page]];page+=d;changed();draw();}

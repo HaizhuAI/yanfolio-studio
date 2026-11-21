@@ -43,3 +43,12 @@ html.native-client[data-theme=dark] :is(.nav.active,.drafts button.current){back
 [data-theme=dark] #transfer-progress{background:#302c40;border-color:#686078}
 @media(max-width:680px){.sidebar>.appearance-open,.account-nav>.appearance-open{margin:0;font-size:12px;padding:5px}.sidebar>.appearance-open span,.account-nav>.appearance-open span{display:none}}
 
+
+html.theme-switching *,html.theme-switching *::before,html.theme-switching *::after{transition-duration:0s!important}
+html[data-theme=light]:not(.native-client) :is(.sidebar,.account-nav){background:#e9eaf2;color:#282837;border-right:1px solid #d9d9e4}
+html[data-theme=light]:not(.native-client) :is(.sidebar .nav,.drafts button,.sidebar-foot small,.nav-label,.account-nav>a:not(.brand),.account-nav .text-btn,.sidebar>.appearance-open,.account-nav>.appearance-open){color:#524d64}
+html[data-theme=light]:not(.native-client) :is(.nav.active,.drafts button.current,.account-nav>a[aria-current=page]){background:#dcd8f2!important;color:#473992!important}
+html[data-theme=light]:not(.native-client) :is(.sidebar .nav:not(.active):hover,.drafts button:hover,.account-nav>a:not(.brand):hover,.account-nav .text-btn:hover){background:#dfe0eb}
+html[data-theme=light]:not(.native-client) :is(.sidebar-foot,.drafts-label){border-color:#d1cfde}
+html[data-theme=light]:not(.native-client) .command-launch{background:#f5f4fa;color:#58536b;border-color:#d0cedf}
+html[data-theme=light]:not(.native-client) .command-launch kbd{color:#706980;border-color:#d4d1df}

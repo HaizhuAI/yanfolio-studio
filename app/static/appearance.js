@@ -13,6 +13,7 @@
  let saved=clean(cached()),shown=saved,uid=null,dialog=null;
  function apply(p){
    shown=clean(p);const theme=shown.mode==="system"?(media.matches?"dark":"light"):shown.mode;
+   if(root.dataset.theme&&root.dataset.theme!==theme){root.classList.add("theme-switching");requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.remove("theme-switching")));}
    root.dataset.theme=theme;root.dataset.themeMode=shown.mode;root.dataset.uiFont=shown.ui_font;root.dataset.readFont=shown.reading_font;
    root.style.setProperty("--reader-size",shown.reading_size+"px");
    if(navigator.userAgent.includes("YanfolioDesktop/"))window.chrome?.webview?.postMessage("yanfolio.theme."+theme);
