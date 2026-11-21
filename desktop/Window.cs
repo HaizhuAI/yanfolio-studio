@@ -63,6 +63,7 @@ internal sealed class Workspace : Form {
     private string ConfigFile {get{return Path.Combine(profile,"service.txt");}}
     private static readonly Color Night=Color.FromArgb(17,18,30);
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr handle,int attribute,ref int value,int size);
+    [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
 
     internal Workspace(){
         var screen=Screen.FromPoint(Cursor.Position).WorkingArea;
@@ -71,15 +72,15 @@ internal sealed class Workspace : Form {
         StartPosition=FormStartPosition.CenterScreen;
         AutoScaleDimensions=new SizeF(96,96);AutoScaleMode=AutoScaleMode.Dpi;Font=new Font("Microsoft YaHei UI",9f);
         Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);BackColor=Color.FromArgb(246,246,251);
-        var rail=new Panel(){Dock=DockStyle.Left,Width=82,BackColor=Night};
-        var mark=new PictureBox(){Image=Icon.ToBitmap(),SizeMode=PictureBoxSizeMode.Zoom,Width=34,Height=34,Left=24,Top=20,AccessibleName="砚稿"};
-        var top=new Panel(){Height=78,Dock=DockStyle.Top,BackColor=Night};top.Controls.Add(mark);
+        var rail=new Panel(){Name="rail",Dock=DockStyle.Left,Width=82,BackColor=Night};
+        var mark=new PictureBox(){Name="mark",Image=Icon.ToBitmap(),SizeMode=PictureBoxSizeMode.Zoom,Width=34,Height=34,Left=24,Top=20,AccessibleName="砚稿"};
+        var top=new Panel(){Name="top",Height=78,Dock=DockStyle.Top,BackColor=Night};top.Controls.Add(mark);
         var routes=new FlowLayoutPanel(){Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,BackColor=Night};
         AddRoute(routes,"写作","写作工作台","write","/studio","Ctrl+1");
         AddRoute(routes,"文档","我的云文档","folder","/drive.html","Ctrl+2");
         AddRoute(routes,"账号","个人中心","profile","/profile.html","Ctrl+3");
         AddRoute(routes,"点数","点数钱包","wallet","/wallet.html","Ctrl+4");
-        var bottom=new FlowLayoutPanel(){Dock=DockStyle.Bottom,Height=70,BackColor=Night};connection=new RailButton("连接","连接服务器","server");
+        var bottom=new FlowLayoutPanel(){Name="bottom",Dock=DockStyle.Bottom,Height=70,BackColor=Night};connection=new RailButton("连接","连接服务器","server");
         connection.Click+=(s,e)=>Configure();bottom.Controls.Add(connection);tips.SetToolTip(connection,"连接运营方服务器");
         rail.Controls.Add(routes);rail.Controls.Add(top);rail.Controls.Add(bottom);
         content.Dock=DockStyle.Fill;view.Dock=DockStyle.Fill;view.DefaultBackgroundColor=Color.FromArgb(246,246,251);
@@ -88,6 +89,7 @@ internal sealed class Workspace : Form {
         var retry=new Button(){Text="重试连接",Dock=DockStyle.Right,Width=92,FlatStyle=FlatStyle.Flat,BackColor=Color.White};retry.Click+=(s,e)=>Go("/profile.html");
         errorBar.Controls.Add(errorText);errorBar.Controls.Add(retry);content.Controls.Add(view);content.Controls.Add(errorBar);
         Controls.Add(content);Controls.Add(rail);
+        Shown+=(s,e)=>ApplyChromeScale();
         Load+=async (sender,evt)=>{
             try{
                 Directory.CreateDirectory(profile);Uri stored;
@@ -110,6 +112,16 @@ internal sealed class Workspace : Form {
         };
     }
     protected override void OnHandleCreated(EventArgs e){base.OnHandleCreated(e);try{int dark=1,bg=0x001e1211,fg=0x00f4f0ef;DwmSetWindowAttribute(Handle,20,ref dark,4);DwmSetWindowAttribute(Handle,35,ref bg,4);DwmSetWindowAttribute(Handle,36,ref fg,4);}catch(DllNotFoundException){}catch(EntryPointNotFoundException){}}
+    private void ApplyChromeScale(){
+        if(IsDisposed||!Controls.ContainsKey("rail"))return;
+        float dpi=96;try{dpi=GetDpiForWindow(Handle);}catch(EntryPointNotFoundException){using(var graphics=CreateGraphics())dpi=graphics.DpiX;}
+        Func<int,int> px=value=>(int)Math.Round(value*Math.Max(96,dpi)/96f);
+        var rail=Controls["rail"];var top=rail.Controls["top"];var mark=top.Controls["mark"];
+        rail.Width=px(82);top.Height=px(78);mark.SetBounds(px(24),px(19),px(34),px(34));rail.Controls["bottom"].Height=px(70);
+        var targets=new List<RailButton>(buttons.Values);targets.Add(connection);
+        foreach(var target in targets){target.Size=new Size(px(66),px(56));target.Margin=new Padding(px(7),px(3),px(7),px(3));}
+    }
+    protected override void WndProc(ref Message msg){base.WndProc(ref msg);if(msg.Msg==0x02E0&&IsHandleCreated&&!IsDisposed)BeginInvoke((Action)ApplyChromeScale);}
     private void AddRoute(Control panel,string label,string name,string glyph,string path,string shortcut){
         var b=new RailButton(label,name,glyph);b.Click+=(s,e)=>Go(path);buttons[path]=b;panel.Controls.Add(b);tips.SetToolTip(b,name+"   "+shortcut);
     }
