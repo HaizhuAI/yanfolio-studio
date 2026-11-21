@@ -13,6 +13,7 @@ from docx.shared import Cm, Pt
 from fastapi.testclient import TestClient
 from lxml import etree
 from pypdf import PdfWriter
+from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
 from app import formatting as fmt
 from app import literature
@@ -133,6 +134,30 @@ def test_invalid_uploads_and_origin():
     pdf=PdfWriter();pdf.add_blank_page(width=500,height=500);out=BytesIO();pdf.write(out)
     assert client.post("/api/format/preview",files={"manuscript":("a.docx",raw),"requirements":("r.pdf",out.getvalue())}).status_code==422
     assert client.post("/api/export",headers={"Origin":"https://elsewhere.example"},json={"title":"x","text":"y"}).status_code==403
+
+
+def test_text_pdf_rule_and_model_citation_check(monkeypatch):
+    pdf=PdfWriter()
+    page=pdf.add_blank_page(width=500,height=500)
+    font=DictionaryObject({NameObject("/Type"):NameObject("/Font"),NameObject("/Subtype"):NameObject("/Type1"),NameObject("/BaseFont"):NameObject("/Helvetica")})
+    page[NameObject("/Resources")]=DictionaryObject({NameObject("/Font"):DictionaryObject({NameObject("/F1"):font})})
+    stream=DecodedStreamObject()
+    stream.set_data(b"BT /F1 12 Tf 30 440 Td (A4) Tj ET")
+    page[NameObject("/Contents")]=pdf._add_object(stream)
+    output=BytesIO()
+    pdf.write(output)
+    original,_=fixtures()
+    result=client.post("/api/format/preview",files={"manuscript":("a.docx",original),"requirements":("rules.pdf",output.getvalue())}).json()
+    assert result["sections"]==1 and result["recognized"]==["A4 纵向"]
+    monkeypatch.setenv("YANFOLIO_AI_BASE_URL","http://localhost:3000/v1")
+    monkeypatch.setenv("YANFOLIO_AI_MODEL","test-model")
+    async def answer(self,url,headers,json):
+        assert "题名" in json["messages"][1]["content"]
+        assert "10.1234/abc" in json["messages"][1]["content"]
+        return httpx.Response(200,request=httpx.Request("POST",url),json={"choices":[{"message":{"content":"比较两种方法 [1][9]。"}}]})
+    monkeypatch.setattr(httpx.AsyncClient,"post",answer)
+    reply=client.post("/api/write",json={"action":"review","title":"题目","text":"原句","references":[{"title":"文献","doi":"10.1234/abc"}]})
+    assert reply.status_code==200 and reply.json()["unlinked_citations"]==[9]
 
 
 def test_search_dedup_and_partial_failure(monkeypatch):
