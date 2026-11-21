@@ -1,4 +1,6 @@
 import re
+import asyncio
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
 
@@ -100,4 +102,29 @@ def test_insufficient_balance_and_crash_recovery(monkeypatch):
         c.execute("UPDATE jobs SET created=0")
     for _ in range(2):
         assert user.get("/api/wallet").json()["balance"]==5
+
+
+def test_parallel_generations_reserve_one_available_charge(monkeypatch):
+    user=seed(points=2)
+    other=new_client()
+    other.cookies.update(user.cookies)
+    payload={"model_id":1,"action":"polish","text":"原文","title":"T"}
+    quoted=user.post("/api/write/quote",json=payload).json()
+    job={**payload,"request_id":str(uuid4()),"quote":quoted["quote"]}
+    entered,finish=threading.Event(),threading.Event()
+    async def wait_for_provider(*args):
+        entered.set()
+        assert await asyncio.to_thread(finish.wait,8)
+        return "原文。",[10,4],True
+    monkeypatch.setattr(agent,"invoke",wait_for_provider)
+    with ThreadPoolExecutor(1) as pool:
+        first=pool.submit(user.post,"/api/write",json=job)
+        try:
+            assert entered.wait(5)
+            assert other.post("/api/write",json=job).status_code==409
+            assert other.post("/api/write",json={**job,"request_id":str(uuid4())}).status_code==402
+        finally:
+            finish.set()
+        assert first.result().json()["charged"]==2
+    assert other.get("/api/wallet").json()["balance"]==0
 
