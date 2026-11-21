@@ -115,13 +115,19 @@ function download(blob,filename) {
 }
 $("export").onclick=async()=>{try { const r=await request("/api/export",post(doc()));download(await r.blob(),(doc().title||"无题手稿")+".docx"); } catch(e){notice(e.message);} };
 $("import").onclick=()=>$("import-file").click();
-$("import-file").onchange=async()=>{
-  const file=$("import-file").files[0];if(!file)return;
+async function importWord(file) {
   const form=new FormData();form.append("manuscript",file);
-  try{const raw=await(await request("/api/import",{method:"POST",body:form})).json();
-    const d={...blank(),...raw};state.docs.unshift(d);selectDoc(d.id);notice("已导入正文。表格、图片和域保留在原始 Word 文件中。");
-  }catch(e){notice(e.message);}finally{$("import-file").value="";}
-};
+  const raw=await(await request("/api/import",{method:"POST",body:form})).json();
+  const d={...blank(),...raw};state.docs.unshift(d);selectDoc(d.id);notice("已导入正文。表格、图片和域保留在原始 Word 文件中。");
+}
+$("import-file").onchange=async()=>{const file=$("import-file").files[0];if(!file)return;
+  try{await importWord(file);}catch(e){notice(e.message);}finally{$("import-file").value="";}};
+$("save-cloud").onclick=async()=>{const b=$("save-cloud"),d=doc();b.disabled=true;
+  try{const title=(d.title||"无题手稿").replace(/[\\/:*?"<>|]/g,"_").slice(0,120);const stamp=new Date().toISOString().replace(/[:.]/g,"-");
+    const name=prompt("云文档文件名",title+"-"+stamp.slice(0,19)+".docx");if(!name)return;
+    const response=await request("/api/export",post(d));const file=new File([await response.blob()],name.toLowerCase().endsWith(".docx")?name:name+".docx");
+    await YanfolioDrive.upload(file);notice("Word 副本已保存到云文档。");
+  }catch(e){notice(e.message);}finally{b.disabled=false;}};
 $("use-draft").onclick=async()=>{
   try{const d=doc(),r=await request("/api/export",post(d)),blob=await r.blob();
     const transfer=new DataTransfer();transfer.items.add(new File([blob],(d.title||"手稿")+".docx",{type:blob.type}));
@@ -215,6 +221,15 @@ $("apply-format").onclick=async()=>{
   catch(e){notice(e.message);}finally{$("apply-format").disabled=!validFormat;}
 };
 selectDoc(doc().id);
+const query=new URLSearchParams(location.search),cloudId=query.get("cloud")||query.get("formatCloud");
+if(cloudId&&/^[a-f0-9]{32}$/.test(cloudId)){
+ try{const data=await YF.api("/api/drive/files/"+cloudId+"/versions"),version=query.get("version")||data.file.head;
+  const v=data.versions.find(x=>x.id===version);if(!v||v.bytes>16*1024*1024||!data.file.name.toLowerCase().endsWith(".docx"))throw Error("请选择 16 MB 以内的 DOCX 文档。");
+  const response=await request("/api/drive/files/"+cloudId+"/download?version="+encodeURIComponent(version));const file=new File([await response.blob()],data.file.name);
+  if(query.has("formatCloud")){const transfer=new DataTransfer();transfer.items.add(file);$("manuscript").files=transfer.files;$("manuscript").dispatchEvent(new Event("input",{bubbles:true}));show("format");}else await importWord(file);
+  history.replaceState(null,"","/studio");
+ }catch(e){notice(e.message);}
+}
 if(conflict)showConflict();
 document.addEventListener("visibilitychange",async()=>{if(document.visibilityState==="hidden"){await flush();return;}try{const account=await YF.api("/api/me");if(account.id!==user.id)location.reload();else walletBalance(account.balance);}catch{}});
 }

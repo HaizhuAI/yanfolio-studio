@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f6f2"><title>砚稿 Yanfolio · 学术写作工作台</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/account.css"><script defer src="/common.js"></script><script defer src="/workspace.js"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f6f2"><title>砚稿 Yanfolio · 学术写作工作台</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/account.css"><script defer src="/common.js"></script><script defer src="/transfer.js"></script><script defer src="/workspace.js"></script></head>
 <body>
 <div class="shell">
 <aside class="sidebar">
@@ -16,7 +16,7 @@
  <main>
  <div id="recovery" class="save-warning" hidden><span id="recovery-msg"></span> <button class="text-btn" id="merge">合并为独立副本</button></div><button id="legacy" hidden class="text-btn">导入本浏览器的旧版手稿</button>
  <section id="view-write">
- <div class="page-head"><div><div class="eyebrow">MANUSCRIPT STUDIO</div><h1>论文创作</h1></div><div class="head-actions"><button id="import" class="button" title="提取 Word 正文创建手稿；原稿套版可直接进入格式工作室">导入正文</button><input id="import-file" type="file" accept=".docx" hidden><button id="export" class="button"><i data-icon="download"></i>导出 Word</button></div></div>
+ <div class="page-head"><div><div class="eyebrow">MANUSCRIPT STUDIO</div><h1>论文创作</h1></div><div class="head-actions"><button id="import" class="button" title="提取 Word 正文创建手稿；原稿套版可直接进入格式工作室">导入正文</button><input id="import-file" type="file" accept=".docx" hidden><button class="button" id="save-cloud">存入云文档</button><button id="export" class="button"><i data-icon="download"></i>导出 Word</button></div></div>
  <div class="writing-grid"><div class="editor-col"><article class="paper"><div class="paper-top"><span class="paper-type"><span class="small-rule"></span>研究手稿</span><small id="paper-id"></small></div>
  <label class="sr" for="doc-title">手稿标题</label><input id="doc-title" class="doc-title" maxlength="250" placeholder="输入论文题目">
  <div class="doc-meta"><span><i data-icon="file"></i>工作草稿</span><span id="wordcount">0 字</span></div>

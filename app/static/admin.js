@@ -25,3 +25,17 @@ form("issue-form",async()=>{const r=await YF.api("/api/admin/vouchers","POST",{p
 $("download-codes").onclick=()=>{const a=el("a");a.download="Yanfolio-"+batchId+".txt";a.href=URL.createObjectURL(new Blob([$("code-output").value],{type:"text/plain;charset=utf-8"}));a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);};
 form("user-search",async()=>{});load().catch(e=>msg(e.message));
 
+
+let cloudState;
+async function cloudLoad(){
+ const d=await YF.api("/api/admin/cloud?q="+encodeURIComponent($("cloud-q").value));cloudState=d;
+ const fmt=YanfolioDrive.fmt;$("cloud-summary").textContent="已保存 "+d.versions+" 份版本，共 "+fmt(d.stored)+"；存储卷可用 "+fmt(d.disk_available)+"。每个账号默认 "+fmt(d.config.free_bytes)+"。";
+ $("cloud-switch").textContent=d.config.uploads_enabled?"暂停文档上传":"恢复文档上传";
+ table("cloud-users",["邮箱","已用","传输预留","配额",""],d.users.map(u=>[u.email,fmt(u.used),fmt(u.reserved),fmt(u.quota),button("调整配额",async()=>{const n=prompt("请输入账号配额（GB）；输入 default 恢复默认配额。",String(u.quota/1e9));if(n===null)return;
+  if(n!=="default"&&!/^\d+(?:\.\d{1,3})?$/.test(n.trim()))throw Error("请输入有效的 GB 数值。");
+  await YF.api("/api/admin/cloud/users/"+u.id,"PUT",{bytes:n==="default"?null:Math.round(Number(n)*1e9)});await cloudLoad();msg("配额已更新。");})]));
+}
+document.querySelector('[data-tab="cloud"]').addEventListener("click",()=>cloudLoad().catch(e=>msg(e.message)));
+$("cloud-find").onsubmit=e=>{e.preventDefault();cloudLoad().catch(err=>msg(err.message));};
+$("cloud-switch").onclick=async()=>{if(!cloudState||!confirm("更改所有客户端的文档上传状态？"))return;
+ try{await YF.api("/api/admin/cloud/uploads","PUT",{enabled:!cloudState.config.uploads_enabled});await cloudLoad();msg("服务端上传状态已更新。");}catch(e){msg(e.message);}};
