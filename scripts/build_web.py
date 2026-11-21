@@ -10,11 +10,11 @@ def build():
     output.mkdir(exist_ok=True)
     inputs=[ROOT/x for x in (".dockerignore","LICENSE","requirements.txt","README.md","docs/architecture.md",
                              "docs/references.md","docs/technology.md","deploy/Dockerfile","deploy/Caddyfile","deploy/compose.yaml",
-                             "scripts/create_admin.py","scripts/cloud_backup.py","docs/cloud.md")]
+                             "scripts/create_admin.py","scripts/cloud_backup.py","docs/cloud.md","docs/interface-design.md")]
     inputs.extend(sorted((ROOT/"app").glob("*.py")))
     for suffix in ("*.html","*.js","*.css"):
         inputs.extend(sorted((ROOT/"app/static").glob(suffix)))
-    inputs.append(ROOT/"app/static/yanfolio-field.webp")
+    inputs.extend(ROOT/"app/static"/n for n in ("yanfolio-field.webp","yanfolio-optic.webp","geist.woff2","geist-license.txt","yanfolio.ico"))
     if (output/"Yanfolio.exe").is_file():
         inputs.append(output/"Yanfolio.exe")
     target=output/"Yanfolio-Web.zip"

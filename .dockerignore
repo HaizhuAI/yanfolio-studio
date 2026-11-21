@@ -13,3 +13,7 @@
 !app/static/yanfolio-field.webp
 
 !scripts/cloud_backup.py
+!app/static/yanfolio-optic.webp
+!app/static/geist.woff2
+!app/static/geist-license.txt
+!app/static/yanfolio.ico

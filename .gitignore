@@ -26,3 +26,7 @@
 !/deploy/Caddyfile
 !/deploy/compose.yaml
 !/app/static/yanfolio-field.webp
+!/app/static/yanfolio-optic.webp
+!/app/static/geist.woff2
+!/app/static/geist-license.txt
+!/app/static/yanfolio.ico

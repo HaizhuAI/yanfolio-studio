@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import mimetypes
 from contextlib import asynccontextmanager, suppress
 import os
 import re
@@ -58,7 +59,10 @@ for router in (accounts.router,agent.router,commerce.router,control.router,cloud
     app.include_router(router)
 TYPES = {"docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
 FILES_MAX = 16*1024*1024
-PUBLIC = {"/","/landing.css","/landing.js","/yanfolio-field.webp","/login.html","/login.js","/common.js","/style.css","/account.css","/health",
+mimetypes.add_type("image/webp",".webp")
+mimetypes.add_type("font/woff2",".woff2")
+mimetypes.add_type("image/x-icon",".ico")
+PUBLIC = {"/ui.css","/ui.js","/anime.min.js","/yanfolio-optic.webp","/yanfolio.ico","/geist.woff2","/geist-license.txt","/","/landing.css","/landing.js","/yanfolio-field.webp","/login.html","/login.js","/common.js","/style.css","/account.css","/health",
           "/api/auth/code","/api/auth/register","/api/auth/login","/api/auth/reset","/api/auth/options","/desktop/download"}
 
 
@@ -138,7 +142,7 @@ def desktop_binary():
 @app.get("/api/auth/options")
 def public_options(request:Request):
     return {"desktop":desktop_binary().is_file(),"signed_in":accounts.identity(request) is not None,
-            "client_version":"2.1","free_document_bytes":cloud_store.FREE_BYTES}
+            "client_version":"2.2","free_document_bytes":cloud_store.FREE_BYTES}
 
 
 @app.get("/desktop/download")

@@ -12,3 +12,7 @@
 | 图标与动作 | Lucide 明确规定统一图标画布和安全边距。Anime.js 的时间线可安排动作顺序，其媒体查询示例也演示了如何响应减少动态效果的偏好。桌面和网页可据此统一图标笔画、控制面板切换顺序，并给减少动态效果的用户提供同样可辨认的选中和完成状态。[Lucide · 设计语言](https://lucide.dev/contribute/icons/design-principles) · [Anime.js · Timeline](https://animejs.com/documentation/timeline) · [媒体查询](https://animejs.com/documentation/scope/scope-parameters/mediaqueries/) |
 
 60fps 将手机交互拆成连续画面，适合检查操作前、按下时、完成后三个时刻。砚稿的验收重点是焦点仍可定位、手稿仍可阅读、余额或用量的最终值与服务端一致。案例页中的字体和视觉素材有各自的分发条件；上表记录观察与设计取舍，相关模板、字体文件和示例源码均未随本调研引入。[60fps · Storyboards](https://60fps.design/storyboards)
+
+## 本版随包组件
+
+官网的书页切换和标题入场使用 Anime.js 4.5.0；发行包内脚本保留官方 MIT 声明。Geist 可变字体从 Vercel 的固定提交取得，并在同目录提供 OFL 许可证。中文正文采用系统中文字体。书页主视觉、应用图标、原生窗口导航和页面组件为砚稿定制。[Anime.js](https://github.com/juliangarnier/anime) · [Geist 对应提交](https://github.com/vercel/geist-font/tree/ef2597cfc42f4797676df105517ccc0a1cfa6569)

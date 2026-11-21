@@ -35,7 +35,7 @@ def build(service):
     config=BUILD/"Endpoint.cs"
     config.write_text("internal static class BuildConfig { public const string ServiceUrl = "+json.dumps(service.rstrip("/")+"/")+"; }")
     csc=Path(os.environ["WINDIR"])/"Microsoft.NET/Framework64/v4.0.30319/csc.exe"
-    switches=[str(csc),"/nologo","/target:winexe","/platform:x64","/optimize+","/codepage:65001","/r:System.Windows.Forms.dll","/r:System.Drawing.dll"]
+    switches=[str(csc),"/nologo","/target:winexe","/platform:x64","/optimize+","/win32icon:"+str(ROOT/"app/static/yanfolio.ico"),"/codepage:65001","/r:System.Windows.Forms.dll","/r:System.Drawing.dll"]
     client=BUILD/"Yanfolio.Workspace.exe"
     subprocess.run([*switches,"/out:"+str(client),*["/r:"+str(BUILD/Path(p).name) for p in parts[:2]],str(config),str(ROOT/"desktop/Window.cs")],check=True)
     resources=[client.name,*[Path(p).name for p in parts]]
