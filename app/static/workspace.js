@@ -50,10 +50,23 @@ $("merge").onclick=async()=>{try{const fresh=await YF.api("/api/workspace");stat
 $("legacy").hidden=!localStorage.getItem(legacyKey)||!!localStorage.getItem(storageKey+".imported");$("legacy").onclick=()=>{if(!confirm("将此浏览器旧版手稿复制到当前邮箱账号？"))return;try{state=combine(state,JSON.parse(localStorage.getItem(legacyKey)));selectDoc(state.active);localStorage.setItem(storageKey+".imported","1");$("legacy").hidden=true;}catch(e){notice(e.message);}};
 $("logout").onclick=async()=>{clearTimeout(saveTimer);await flush();await YF.logout();};
 window.addEventListener("online",flush);
+function inspector(open,tab="assistant"){
+ document.body.classList.toggle("with-inspector",open);$("inspector").hidden=!open;$("assistant-toggle").setAttribute("aria-pressed",open);
+ $("assistant-pane").hidden=tab!=="assistant";$("library-pane").hidden=tab!=="library";
+ $("tab-assistant").setAttribute("aria-pressed",tab==="assistant");$("tab-library").setAttribute("aria-pressed",tab==="library");
+ if(open){setFocus(false);YanUI.enter($("inspector"));if(matchMedia("(max-width:920px)").matches)$("inspector").scrollIntoView({block:"nearest"});}
+}
+$("assistant-toggle").onclick=()=>inspector($("inspector").hidden||$("assistant-pane").hidden);
+$("close-inspector").onclick=()=>{inspector(false);$("assistant-toggle").focus();};$("tab-assistant").onclick=()=>inspector(true);$("tab-library").onclick=()=>inspector(true,"library");
+$("selection-ai").onclick=()=>{inspector(true);$("prompt").focus({preventScroll:true});};$("citation-dock").onclick=()=>inspector(true,"library");
+function rail(open){document.body.classList.toggle("rail-closed",!open);$("rail-toggle").setAttribute("aria-expanded",open);}
+rail(!matchMedia("(max-width:760px)").matches);$("rail-toggle").onclick=()=>rail(document.body.classList.contains("rail-closed"));
+$("to-slides").onclick=()=>{const d=doc();try{sessionStorage.setItem("yanfolio.to-slides."+user.id,JSON.stringify({id:d.id,title:d.title,text:d.text.slice(0,20000),references:d.references}));}catch{}location.assign("/slides?from=manuscript");};
+document.querySelectorAll(".tools-menu button").forEach(b=>b.addEventListener("click",()=>{b.closest("details").open=false;}));
 function setFocus(active){
  document.body.classList.toggle("focus-writing",active);$("focus-writing").setAttribute("aria-pressed",active);
  $("focus-writing").querySelector("span").textContent=active?"退出专注":"专注写作";
- if(active)$("body").focus({preventScroll:true});
+ if(active){inspector(false);$("body").focus({preventScroll:true});}
 }
 $("focus-writing").onclick=()=>setFocus(!document.body.classList.contains("focus-writing"));
 document.addEventListener("keydown",e=>{

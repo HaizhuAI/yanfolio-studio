@@ -26,6 +26,7 @@ function fileRow(f){
  else{
   actions.append(link("下载",source(f)),act("版本",()=>historyFor(f)));
   const more=el("details"),summary=el("summary","管理"),list=el("div",undefined,"file-actions");more.append(summary,list);
+  if(/\.pptx$/i.test(f.name)&&f.bytes<=16*1024*1024)list.append(link("导入演示文字","/slides?cloud="+f.id));
   if(/\.docx$/i.test(f.name)&&f.bytes<=16*1024*1024)list.append(link("导入写作", "/studio?cloud="+f.id+"&version="+f.head),link("用于排版","/studio?formatCloud="+f.id+"&version="+f.head));
   list.append(act("上传新版本",()=>choose({target:f})),act("重命名",()=>{const n=prompt("新文件名",f.name);if(n&&n!==f.name)return change(f,"rename",n);}),
    act("移动",()=>chooseFolder(f)),act("移入回收站",()=>{if(confirm("将此文件移入回收站？30 天内可还原。"))return change(f,"trash");}));actions.append(more);

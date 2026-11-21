@@ -62,7 +62,7 @@
    dialog.addEventListener("click",e=>{const r=dialog.getBoundingClientRect();if(e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))dialog.close();});
    input.onkeydown=e=>{if(!visible.length)return;if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();index=(index+(e.key==="ArrowDown"?1:-1)+visible.length)%visible.length;paint();}else if(e.key==="Enter"){e.preventDefault();go(index);}};
    document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&e.code==="KeyK"){e.preventDefault();if(dialog.open)dialog.close();else open();}
-     if(document.documentElement.classList.contains("native-client")&&e.ctrlKey&&!e.shiftKey&&!e.altKey&&/^Digit[1-4]$/.test(e.code)){e.preventDefault();location.assign(["/studio","/drive.html","/profile.html","/wallet.html"][Number(e.code.slice(-1))-1]);}});
+     if(document.documentElement.classList.contains("native-client")&&e.ctrlKey&&!e.shiftKey&&!e.altKey&&/^Digit[1-5]$/.test(e.code)){e.preventDefault();location.assign(["/studio","/drive.html","/profile.html","/wallet.html","/slides"][Number(e.code.slice(-1))-1]);}});
    window.YanUI.openNavigator=open;
  }
  window.YanUI={icon,icons,motion,enter};
