@@ -11,6 +11,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -29,6 +30,14 @@ async def lifespan(app):
 
 
 app = FastAPI(title="砚稿 Yanfolio", docs_url=None, redoc_url=None, openapi_url=None,lifespan=lifespan)
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_fields(request, exc):
+    fields=", ".join(".".join(str(p) for p in e["loc"][1:]) for e in exc.errors()[:5])
+    return JSONResponse({"detail":"输入字段格式有误："+fields},422)
+
+
 for router in (accounts.router,agent.router,commerce.router,control.router):
     app.include_router(router)
 TYPES = {"docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}

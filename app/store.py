@@ -101,7 +101,9 @@ CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,uid INTEGER REFERENCES u
 
 
 def init():
-    directory().mkdir(parents=True,exist_ok=True)
+    directory().mkdir(parents=True,exist_ok=True,mode=0o700)
+    if os.name!="nt":
+        directory().chmod(0o700)
     Fernet(key())
     with db() as c:
         c.execute("PRAGMA journal_mode=WAL")
