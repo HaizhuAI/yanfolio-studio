@@ -5,6 +5,6 @@ async function load(){const [user,w]=await Promise.all([YF.api("/api/me"),YF.api
  $("rows").replaceChildren(...w.ledger.map(x=>{const row=el("tr");[YF.date(x.created),x.note,(x.delta>0?"+":"")+x.delta,x.after].forEach(v=>row.append(el("td",v)));return row;}));
  if(!w.ledger.length){const row=el("tr"),cell=el("td","暂无点数变动");cell.colSpan=4;row.append(cell);$("rows").append(row);}
 }
-$("redeem").onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector("button");b.disabled=true;try{const r=await YF.api("/api/wallet/redeem","POST",{code:$("code").value.trim()});$("feedback").textContent="已到账 "+r.points+" 点";$("code").value="";await load();}catch(err){$("feedback").textContent=err.message;}finally{b.disabled=false;}};
+$("redeem").onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector("button");b.disabled=true;try{const r=await YF.api("/api/wallet/redeem","POST",{code:$("code").value.trim()});$("feedback").textContent=(r.already?"该兑换码已在本账号入账 ":"已到账 ")+r.points+" 点";$("code").value="";await load();}catch(err){$("feedback").textContent=err.message;}finally{b.disabled=false;}};
 load().catch(e=>$("feedback").textContent=e.message);
 

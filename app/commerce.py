@@ -30,6 +30,9 @@ def redeem(body:Redeem,req:Request):
     h=s.digest(body.code.upper().strip())
     with s.db(True) as c:
         row=c.execute("SELECT * FROM vouchers WHERE hash=?",(h,)).fetchone()
+        if row and row["uid"]==uid:
+            balance=c.execute("SELECT balance FROM users WHERE id=?",(uid,)).fetchone()[0]
+            return {"balance":balance,"points":row["points"],"already":True}
         if not row or row["uid"] is not None or row["revoked"]:
             raise HTTPException(400,"兑换码无效或已使用。")
         c.execute("UPDATE vouchers SET uid=?,redeemed=? WHERE hash=?",(uid,s.now(),h))

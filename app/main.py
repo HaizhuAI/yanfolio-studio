@@ -65,7 +65,8 @@ async def access(request, call_next):
         if user is None:
             if path.startswith("/api/"):
                 return JSONResponse({"detail":"请先登录。"},401)
-            return RedirectResponse("/login.html",303,headers={"Cache-Control":"no-store"})
+            target="/login.html?next="+path if path in ("/admin.html","/wallet.html") else "/login.html"
+            return RedirectResponse(target,303,headers={"Cache-Control":"no-store"})
         if (path.startswith("/api/admin/") or path in ("/admin.html","/admin.js")) and user["role"]!="admin":
             return JSONResponse({"detail":"需要管理员权限。"},403)
         expected=request.headers.get("x-yanfolio-account")
