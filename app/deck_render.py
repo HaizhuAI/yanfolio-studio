@@ -6,6 +6,7 @@ import json
 import re
 import unicodedata
 from pathlib import Path
+from zipfile import ZipFile,ZIP_DEFLATED
 
 from lxml import etree
 from pptx import Presentation
@@ -36,6 +37,39 @@ def template(key):
 def _binary(key):
     item=template(key)
     return (ASSETS/item["file"]).read_bytes()
+
+
+def licensed(raw,key):
+    """Carry the adaptation's notice with the standalone editable file."""
+    item=template(key)
+    notice=item["source_url"]+"\n\n"+(ASSETS/item["license_file"]).read_text(encoding="utf-8-sig")
+    relns="http://schemas.openxmlformats.org/package/2006/relationships"
+    kinds="http://schemas.openxmlformats.org/package/2006/content-types"
+    prop="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"
+    vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"
+    path="docProps/custom.xml"
+    out=BytesIO()
+    with ZipFile(BytesIO(raw)) as source,ZipFile(out,"w",ZIP_DEFLATED) as dest:
+        rel=etree.fromstring(source.read("_rels/.rels"))
+        ct=etree.fromstring(source.read("[Content_Types].xml"))
+        root=etree.fromstring(source.read(path)) if path in source.namelist() else etree.Element("{"+prop+"}Properties",nsmap={None:prop,"vt":vt})
+        if not any(r.get("Target","").lstrip("/")==path for r in rel):
+            etree.SubElement(rel,"{"+relns+"}Relationship",Id="rIdYanfolioLicense",Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties",Target=path)
+        if not any(r.get("PartName")=="/"+path for r in ct):
+            etree.SubElement(ct,"{"+kinds+"}Override",PartName="/"+path,ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml")
+        for old in list(root):
+            if old.get("name")=="Template license":
+                root.remove(old)
+        pid=max([1]+[int(p.get("pid","1")) for p in root])+1
+        field=etree.SubElement(root,"{"+prop+"}property",fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}",pid=str(pid),name="Template license")
+        etree.SubElement(field,"{"+vt+"}lpwstr").text=notice
+        changes={path:root,"_rels/.rels":rel,"[Content_Types].xml":ct}
+        for name in source.namelist():
+            if name not in changes:
+                dest.writestr(name,source.read(name))
+        for name,part in changes.items():
+            dest.writestr(name,etree.tostring(part,encoding="UTF-8",xml_declaration=True,standalone=True))
+    return out.getvalue()
 
 
 def _em(ch):
@@ -167,7 +201,7 @@ def export(deck):
     prs.core_properties.author="Yanfolio"
     prs.core_properties.last_modified_by="Yanfolio"
     output=BytesIO();prs.save(output)
-    return output.getvalue()
+    return licensed(output.getvalue(),deck.template)
 
 
 def _fill(shape):

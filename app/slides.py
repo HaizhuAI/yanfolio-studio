@@ -1,5 +1,4 @@
 import json
-from functools import lru_cache
 from io import BytesIO
 from pathlib import Path,PurePosixPath
 from urllib.parse import quote
@@ -67,21 +66,17 @@ def catalog():
                          for t in render.templates().values()]}
 
 
-@lru_cache(maxsize=12)
-def cover(key):
-    return render.preview(key,"cover")[0]
-
-
 @router.get("/templates/{key}/thumbnail")
 def thumbnail(key:str):
-    check_theme(key)
-    return Response(cover(key),media_type="image/svg+xml")
+    t=check_theme(key)
+    return FileResponse(render.ASSETS/t["thumbnail"],media_type="image/webp")
 
 
 @router.get("/templates/{key}/download")
 def download_template(key:str):
     t=check_theme(key)
-    return FileResponse(render.ASSETS/t["file"],filename=t["name"]+".pptx",media_type=MIME)
+    return Response(render.licensed((render.ASSETS/t["file"]).read_bytes(),key),media_type=MIME,
+                    headers={"Content-Disposition":"attachment; filename*=UTF-8''"+quote(t["name"]+".pptx",safe="")})
 
 
 @router.get("/drafts")
