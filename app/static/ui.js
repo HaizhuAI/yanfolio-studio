@@ -29,9 +29,45 @@
  function icons(root=document){root.querySelectorAll("i[data-icon]").forEach(el=>el.replaceWith(icon(el.dataset.icon)));}
  function motion(){return !matchMedia("(prefers-reduced-motion: reduce)").matches;}
  function enter(el){if(el&&motion()&&el.animate)el.animate([{opacity:.45,transform:"translateY(5px)"},{opacity:1,transform:"translateY(0)"}],{duration:230,easing:"cubic-bezier(.22,.78,.23,1)"});}
+ function setupNavigator(){
+   const nav=document.querySelector(".account-nav,.sidebar");
+   if(!nav)return;
+   const routes=[
+     {name:"论文创作",icon:"pen",url:"/studio",keys:"writing write lunwen",view:"write"},
+     {name:"文献检索",icon:"search",url:"/studio?view=search",keys:"search literature wenxian",view:"search"},
+     {name:"格式工作室",icon:"layout",url:"/studio?view=format",keys:"format word geshi",view:"format"},
+     {name:"我的云文档",icon:"folder",url:"/drive.html",keys:"files cloud wendang"},
+     {name:"个人中心",icon:"user",url:"/profile.html",keys:"profile account geren"},
+     {name:"点数钱包",icon:"wallet",url:"/wallet.html",keys:"wallet credits qianbao"}
+   ];
+   const make=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text)e.textContent=text;return e;};
+   const launcher=make("button","command-launch");launcher.type="button";launcher.append(icon("search"),make("span","","快速导航"),make("kbd","","Ctrl K"));launcher.setAttribute("aria-haspopup","dialog");
+   const brand=nav.querySelector(".brand");if(brand)brand.after(launcher);else nav.prepend(launcher);
+   const dialog=make("dialog","jump-dialog");dialog.setAttribute("aria-label","快速导航");
+   const line=make("div","jump-line"),input=make("input"),close=make("button","jump-esc","Esc"),list=make("ul","jump-list");
+   input.type="search";input.placeholder="查找页面或工具";input.autocomplete="off";input.setAttribute("aria-label","查找页面或工具");
+   input.setAttribute("role","combobox");input.setAttribute("aria-expanded","true");input.setAttribute("aria-controls","jump-list");input.setAttribute("aria-autocomplete","list");
+   list.id="jump-list";list.setAttribute("role","listbox");list.setAttribute("aria-label","匹配的页面");
+   close.type="button";close.setAttribute("aria-label","关闭快速导航");line.append(icon("search"),input,close);dialog.append(line,list);document.body.append(dialog);
+   let visible=[],index=0,previous=null;
+   function paint(){Array.from(list.querySelectorAll('[role="option"]')).forEach((row,i)=>row.setAttribute("aria-selected",i===index));if(visible.length)input.setAttribute("aria-activedescendant","jump-"+index);else input.removeAttribute("aria-activedescendant");}
+   function go(i){const r=visible[i];if(!r)return;dialog.close();if(r.view&&document.querySelector(".shell")){const button=document.querySelector('nav [data-view="'+r.view+'"]');if(button){button.click();return;}}location.assign(r.url);}
+   function render(){const key=input.value.trim().toLowerCase();visible=routes.filter(r=>(r.name+" "+r.keys).includes(key));index=0;list.replaceChildren();
+     visible.forEach((r,i)=>{const row=make("li");row.id="jump-"+i;row.setAttribute("role","option");row.append(icon(r.icon),make("span","",r.name));row.onpointerdown=e=>e.preventDefault();row.onclick=()=>go(i);list.append(row);});
+     if(!visible.length)list.append(make("li","jump-empty","没有匹配的页面。"));paint();}
+   function open(){if(dialog.open)return;previous=document.activeElement;input.value="";render();dialog.showModal();input.focus();enter(dialog);}
+   launcher.onclick=open;close.onclick=()=>dialog.close();input.oninput=render;
+   dialog.addEventListener("close",()=>{if(previous instanceof HTMLElement&&previous.isConnected)previous.focus({preventScroll:true});});
+   dialog.addEventListener("click",e=>{const r=dialog.getBoundingClientRect();if(e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom))dialog.close();});
+   input.onkeydown=e=>{if(!visible.length)return;if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();index=(index+(e.key==="ArrowDown"?1:-1)+visible.length)%visible.length;paint();}else if(e.key==="Enter"){e.preventDefault();go(index);}};
+   document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&e.code==="KeyK"){e.preventDefault();if(dialog.open)dialog.close();else open();}
+     if(document.documentElement.classList.contains("native-client")&&e.ctrlKey&&!e.shiftKey&&!e.altKey&&/^Digit[1-4]$/.test(e.code)){e.preventDefault();location.assign(["/studio","/drive.html","/profile.html","/wallet.html"][Number(e.code.slice(-1))-1]);}});
+   window.YanUI.openNavigator=open;
+ }
  window.YanUI={icon,icons,motion,enter};
  document.documentElement.classList.toggle("native-client",navigator.userAgent.includes("YanfolioDesktop/"));
  icons();
+ setupNavigator();
  document.querySelectorAll(".account-nav a[href]").forEach(a=>{if(new URL(a.href).pathname===location.pathname)a.setAttribute("aria-current","page");});
 })();
 

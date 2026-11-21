@@ -218,6 +218,7 @@ $("apply-format").onclick=async()=>{
 };
 selectDoc(doc().id);
 const query=new URLSearchParams(location.search),cloudId=query.get("cloud")||query.get("formatCloud");
+if(["search","format"].includes(query.get("view")))show(query.get("view"));
 if(cloudId&&/^[a-f0-9]{32}$/.test(cloudId)){
  try{const data=await YF.api("/api/drive/files/"+cloudId+"/versions"),version=query.get("version")||data.file.head;
   const v=data.versions.find(x=>x.id===version);if(!v||v.bytes>16*1024*1024||!data.file.name.toLowerCase().endsWith(".docx"))throw Error("请选择 16 MB 以内的 DOCX 文档。");
