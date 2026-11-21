@@ -19,7 +19,17 @@ from app import formatting as fmt
 from app import literature
 from app.main import app
 
-client = TestClient(app)
+import pytest
+from conftest import seed
+from uuid import uuid4
+
+@pytest.fixture(autouse=True)
+def signed_client(isolated_service):
+    global client
+    client=seed(points=100)
+    yield
+    client.close()
+
 
 
 def packed(doc):
@@ -156,7 +166,9 @@ def test_text_pdf_rule_and_model_citation_check(monkeypatch):
         assert "10.1234/abc" in json["messages"][1]["content"]
         return httpx.Response(200,request=httpx.Request("POST",url),json={"choices":[{"message":{"content":"比较两种方法 [1][9]。"}}]})
     monkeypatch.setattr(httpx.AsyncClient,"post",answer)
-    reply=client.post("/api/write",json={"action":"review","title":"题目","text":"原句","references":[{"title":"文献","doi":"10.1234/abc"}]})
+    payload={"action":"review","title":"题目","text":"原句","model_id":1,"references":[{"title":"文献","doi":"10.1234/abc"}]}
+    quote=client.post("/api/write/quote",json=payload).json()
+    reply=client.post("/api/write",json={**payload,"quote":quote["quote"],"request_id":str(uuid4())})
     assert reply.status_code==200 and reply.json()["unlinked_citations"]==[9]
 
 
