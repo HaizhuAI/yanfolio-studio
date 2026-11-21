@@ -85,10 +85,10 @@
    }},{root:$("page-list"),rootMargin:"32px"});
    $("page-list").replaceChildren(...active.deck.slides.map((slide,i)=>{
      const b=button("",()=>{page=i;draw();},"slide-row");b.dataset.index=i;b.setAttribute("aria-current",i===page?"page":"false");
-     const img=el("img");img.alt="";const label=el("div",undefined,"slide-row-label");label.append(el("span",String(i+1)),el("strong",slide.title||names[slide.layout]));
+     const img=el("img");img.alt="";img.draggable=false;const label=el("div",undefined,"slide-row-label");label.append(el("span",String(i+1)),el("strong",slide.title||names[slide.layout]));
      b.append(img,label);b.draggable=true;
      b.ondragstart=e=>{dragSource={doc:active.id,slide};e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",String(i+1));};
-     b.ondragover=e=>{if(dragSource?.doc===active.id){e.preventDefault();e.dataTransfer.dropEffect="move";b.classList.add("drop-target");}};
+     b.ondragenter=b.ondragover=e=>{if(dragSource?.doc===active.id){e.preventDefault();e.dataTransfer.dropEffect="move";b.classList.add("drop-target");}};
      b.ondragleave=()=>b.classList.remove("drop-target");
      b.ondragend=()=>{dragSource=null;document.querySelectorAll(".drop-target").forEach(x=>x.classList.remove("drop-target"));};
      b.ondrop=e=>{if(dragSource?.doc!==active.id)return;e.preventDefault();const from=active.deck.slides.indexOf(dragSource.slide);dragSource=null;
