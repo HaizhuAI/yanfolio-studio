@@ -170,7 +170,15 @@ def begin(body:Upload,req:Request):
 @router.get("/api/drive/uploads/{key}")
 def upload_status(key:str,req:Request):
     with s.db() as c:
-        return transfer(cs.upload_row(c,current(req)["id"],key))
+        row=cs.upload_row(c,current(req)["id"],key)
+        return {**transfer(row),"parts":[dict(p) for p in c.execute("SELECT offset,bytes,sha FROM cloud_parts WHERE upload=? ORDER BY offset",(key,))]}
+
+
+@router.get("/api/drive/transfers")
+def transfers(req:Request):
+    with s.db() as c:
+        return [dict(r) for r in c.execute("""SELECT id,client_id,name,folder,target,base,total,received,expires
+                FROM cloud_uploads WHERE uid=? AND completed IS NULL AND expires>? ORDER BY expires DESC""",(current(req)["id"],s.now()))]
 
 
 def append_chunk(uid,key,offset,data,sha):
