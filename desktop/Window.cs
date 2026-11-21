@@ -132,7 +132,7 @@ internal sealed class Workspace : Form {
     private void ApplyShellTheme(bool dark){
         darkShell=dark;var bg=dark?Night:Color.FromArgb(241,241,248);
         int useDark=dark?1:0,caption=ColorTranslator.ToWin32(bg),text=ColorTranslator.ToWin32(dark?Color.White:Color.FromArgb(45,42,61));
-        try{DwmSetWindowAttribute(Handle,20,ref useDark,4);DwmSetWindowAttribute(Handle,35,ref caption,4);DwmSetWindowAttribute(Handle,36,ref text,4);}
+        try{if(DwmSetWindowAttribute(Handle,20,ref useDark,4)!=0)DwmSetWindowAttribute(Handle,19,ref useDark,4);DwmSetWindowAttribute(Handle,35,ref caption,4);DwmSetWindowAttribute(Handle,36,ref text,4);}
         catch(DllNotFoundException){}catch(EntryPointNotFoundException){}
         var rail=Controls["rail"];if(rail==null)return;
         rail.BackColor=bg;foreach(Control part in rail.Controls)part.BackColor=bg;
