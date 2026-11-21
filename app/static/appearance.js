@@ -34,7 +34,7 @@
    dialog=make("dialog",null,"appearance-dialog");dialog.setAttribute("aria-label","外观设置");
    const h=make("h2","外观设置"),form=make("form"),group=make("fieldset"),legend=make("legend","显示模式"),row=make("div",null,"theme-choices");
    const modeButtons=[];
-   for(const [v,label] of Object.entries(modes)){const b=make("button",label);b.type="button";b.dataset.mode=v;b.onclick=()=>{apply({...shown,mode:v});paint();};row.append(b);modeButtons.push(b);}
+   for(const [v,label] of Object.entries(modes)){const b=make("button",label);b.type="button";b.dataset.themeChoice=v;b.onclick=()=>{apply({...shown,mode:v});paint();};row.append(b);modeButtons.push(b);}
    group.append(legend,row);
    function select(label,choices,prop){const l=make("label",label),select=make("select");select.name=prop;for(const [v,name] of Object.entries(choices))select.append(new Option(name,v));select.onchange=()=>apply({...shown,[prop]:select.value});l.append(select);return l;}
    const preview=make("div",null,"type-preview");preview.append(make("strong","研究问题与证据"),make("p","同一份手稿，可以按自己的阅读习惯调整字体。"));
@@ -43,8 +43,8 @@
    const status=make("p",null,"feedback");status.setAttribute("role","status");
    form.append(group,select("界面字体",faces,"ui_font"),select("手稿正文字体",readers,"reading_font"),select("正文字号",{"16":"16 px","18":"18 px","20":"20 px"},"reading_size"),preview,status,tools);
    dialog.append(h,form);document.body.append(dialog);
-   function paint(){modeButtons.forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===shown.mode));for(const prop of ["ui_font","reading_font","reading_size"])form.elements[prop].value=String(shown[prop]);}
-   openButton.onclick=async()=>{await ready;apply(saved);status.textContent="";paint();dialog.showModal();modeButtons.find(b=>b.dataset.mode===shown.mode)?.focus();};
+   function paint(){modeButtons.forEach(b=>b.setAttribute("aria-pressed",b.dataset.themeChoice===shown.mode));for(const prop of ["ui_font","reading_font","reading_size"])form.elements[prop].value=String(shown[prop]);}
+   openButton.onclick=async()=>{await ready;apply(saved);status.textContent="";paint();dialog.showModal();modeButtons.find(b=>b.dataset.themeChoice===shown.mode)?.focus();};
    window.YanfolioAppearance={open:openButton.onclick};
    form.onsubmit=async e=>{e.preventDefault();save.disabled=true;cancel.disabled=true;try{let data=shown;
     if(authPage){const opt={method:"PUT",headers:{"X-Yanfolio-Request":"1","Content-Type":"application/json"},body:JSON.stringify(data)};

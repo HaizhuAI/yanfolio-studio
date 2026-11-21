@@ -70,6 +70,7 @@ function setFocus(active){
 }
 $("focus-writing").onclick=()=>setFocus(!document.body.classList.contains("focus-writing"));
 document.addEventListener("keydown",e=>{
+ if(document.querySelector("dialog[open]"))return;
  if(e.key==="Escape"&&document.body.classList.contains("focus-writing"))setFocus(false);
  if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.code==="KeyF"&&!$("view-write").hidden){e.preventDefault();$("focus-writing").click();}
 });
@@ -144,8 +145,8 @@ $("use-draft").onclick=async()=>{
     $("manuscript").files=transfer.files;$("manuscript").dispatchEvent(new Event("input",{bubbles:true}));notice("已选用当前手稿。");
   }catch(e){notice(e.message);}
 };
-document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{
-  mode=b.dataset.mode;document.querySelectorAll("[data-mode]").forEach(el=>el.classList.toggle("selected",el===b));
+document.querySelectorAll(".charmodes [data-mode]").forEach(b=>b.onclick=()=>{
+  mode=b.dataset.mode;document.querySelectorAll(".charmodes [data-mode]").forEach(el=>el.classList.toggle("selected",el===b));
 });
 let prepared=null;
 function writingInput(){const d=doc(),area=$("body");return {title:d.title,text:d.text,references:d.references,action:mode,selection:d.text.slice(area.selectionStart,area.selectionEnd),instruction:$("prompt").value,model_id:Number($("model").value),expert:$("expert").value,level:$("level").value};}
