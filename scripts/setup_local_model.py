@@ -1,7 +1,7 @@
-"""Install a pinned CPU runtime and an openly licensed text model into ignored local storage."""
-import concurrent.futures
+"""Download a hash-pinned, CPU-only Windows writing model into ignored local storage."""
+import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
-import json
 import shutil
 import sys
 import time
@@ -12,12 +12,12 @@ from zipfile import ZipFile
 ROOT = Path(__file__).resolve().parents[1]/".local"
 MODEL = "qwen2.5-1.5b-instruct-q4_k_m.gguf"
 REPO = "Qwen/Qwen2.5-1.5B-Instruct-GGUF"
+REVISION = "91cad51170dc346986eccefdc2dd33a9da36ead9"
+MODEL_SHA = "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e"
+MODEL_SIZE = 1117320736
 BUILD = "b8241"
 ASSET = f"llama-{BUILD}-bin-win-cpu-x64.zip"
-
-
-def fetch(url, headers=None):
-    return urlopen(Request(url,headers={"User-Agent":"Yanfolio-local-setup/1.0",**(headers or {})}),timeout=75)
+RUNTIME_SHA = "527f0cd2315bfeb22adc46f562cf9f06b3c6a1288a27f5851e6e5e71eb058833"
 
 
 def verified(path,digest):
@@ -27,51 +27,37 @@ def verified(path,digest):
         return hashlib.file_digest(f,"sha256").hexdigest()==digest
 
 
-def runtime():
-    release = json.load(fetch("https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/"+BUILD))
-    asset = next(a for a in release["assets"] if a["name"]==ASSET)
-    digest = asset["digest"].removeprefix("sha256:")
-    archive = ROOT/ASSET
-    if not verified(archive,digest):
-        with fetch(asset["browser_download_url"]) as r, archive.open("wb") as out:
-            shutil.copyfileobj(r,out)
-    if not verified(archive,digest):
-        raise ValueError("Runtime checksum mismatch")
-    with ZipFile(archive) as z:
-        z.extractall(ROOT/"llama")
-    print("CPU runtime verified.",flush=True)
-
-
-def model():
-    info = json.load(fetch("https://huggingface.co/api/models/"+REPO+"?blobs=true"))
-    file = next(a for a in info["siblings"] if a["rfilename"]==MODEL)
-    digest = file["lfs"]["sha256"]
-    dest = ROOT/MODEL
+def download(url, name, size, digest, stride, workers):
+    dest = ROOT/name
     if verified(dest,digest):
-        return
-    url = "https://huggingface.co/"+REPO+"/resolve/"+info["sha"]+"/"+MODEL
-    size = file["size"]
-    stride = 16*1024*1024
+        return dest
     def part(start):
         end = min(start+stride,size)-1
-        tmp = ROOT/(MODEL+"."+str(start)+".part")
-        if tmp.exists() and tmp.stat().st_size==end-start+1:
-            return tmp
-        for attempt in range(4):
+        tmp = ROOT/(name+"."+str(start)+".part")
+        for attempt in range(5):
             try:
-                with fetch(url+"?chunk="+str(start),{"Range":f"bytes={start}-{end}"}) as response:
-                    if response.headers.get("Content-Range","").split("/")[0]!=f"bytes {start}-{end}":
-                        raise ValueError("Range mismatch")
-                    with tmp.open("wb") as out:
-                        shutil.copyfileobj(response,out)
+                have = tmp.stat().st_size if tmp.exists() else 0
+                if have==end-start+1:
+                    return tmp
+                if have>end-start+1:
+                    tmp.unlink()
+                    have=0
+                pos = start+have
+                headers = {"User-Agent":"Yanfolio-local-setup/1.0","Range":f"bytes={pos}-{end}"}
+                req = Request(url+"?yanfolio_range="+str(pos),headers=headers)
+                with urlopen(req,timeout=60) as response:
+                    if response.headers.get("Content-Range","").split("/")[0]!=f"bytes {pos}-{end}":
+                        raise ValueError("Download server returned an unexpected byte range")
+                    with tmp.open("ab") as out:
+                        shutil.copyfileobj(response,out,128*1024)
                 if tmp.stat().st_size!=end-start+1:
                     raise ValueError("Incomplete model range")
                 return tmp
             except Exception:
-                if attempt==3:
+                if attempt==4:
                     raise
-                time.sleep(2+attempt)
-    with concurrent.futures.ThreadPoolExecutor(6) as pool:
+                time.sleep(attempt+1)
+    with ThreadPoolExecutor(workers) as pool:
         chunks=list(pool.map(part,range(0,size,stride)))
     tmp = dest.with_suffix(".partial")
     with tmp.open("wb") as out:
@@ -81,19 +67,36 @@ def model():
     if not verified(tmp,digest):
         for chunk in chunks:
             chunk.unlink()
-        raise ValueError("Model checksum mismatch")
+        raise ValueError("Checksum mismatch for "+name)
     tmp.replace(dest)
     for chunk in chunks:
         chunk.unlink()
-    print("Local model verified.",flush=True)
+    print("Verified "+name,flush=True)
+    return dest
+
+
+def runtime():
+    url = f"https://github.com/ggml-org/llama.cpp/releases/download/{BUILD}/{ASSET}"
+    archive = download(url,ASSET,33712292,RUNTIME_SHA,1024*1024,8)
+    with ZipFile(archive) as z:
+        z.extractall(ROOT/"llama")
+
+
+def model(modelscope):
+    url = (f"https://modelscope.cn/models/{REPO}/resolve/master/{MODEL}" if modelscope else
+           f"https://huggingface.co/{REPO}/resolve/{REVISION}/{MODEL}")
+    download(url,MODEL,MODEL_SIZE,MODEL_SHA,16*1024*1024,12)
 
 
 if __name__=="__main__":
     if sys.platform!="win32":
-        raise SystemExit("The bundled CPU runtime setup targets Windows x64.")
+        raise SystemExit("This runtime setup targets Windows x64.")
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--modelscope",action="store_true",help="Use Qwen's ModelScope mirror with identical SHA-256 verification.")
+    options=parser.parse_args()
     ROOT.mkdir(exist_ok=True)
-    with concurrent.futures.ThreadPoolExecutor(2) as pool:
-        jobs=[pool.submit(runtime),pool.submit(model)]
-        for job in concurrent.futures.as_completed(jobs):
+    with ThreadPoolExecutor(2) as pool:
+        jobs=[pool.submit(runtime),pool.submit(model,options.modelscope)]
+        for job in jobs:
             job.result()
 
