@@ -1,5 +1,6 @@
 import hashlib
 import os
+import re
 from pathlib import Path
 from typing import Literal
 from urllib.parse import quote
@@ -9,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel,Field
 from starlette.concurrency import run_in_threadpool
+from starlette.background import BackgroundTask
 
 from . import cloud_store as cs,store as s
 from .accounts import current,admin,COOKIE
@@ -114,6 +116,28 @@ def create_folder(body:Named,req:Request):
         c.execute("INSERT INTO cloud_folders VALUES(?,?,?,?)",(key,uid,name,name.casefold()))
     return {"id":key}
 
+
+class FolderUpdate(BaseModel):
+    action:Literal["rename","remove"]
+    name:str=Field(default="",max_length=160)
+
+
+@router.post("/api/drive/folders/{key}")
+def edit_folder(key:str,body:FolderUpdate,req:Request):
+    uid=current(req)["id"]
+    with s.db(True) as c:
+        cs.check_folder(c,uid,key)
+        if body.action=="remove":
+            if (c.execute("SELECT 1 FROM cloud_files WHERE uid=? AND folder=?",(uid,key)).fetchone() or
+                c.execute("SELECT 1 FROM cloud_uploads WHERE uid=? AND folder=? AND completed IS NULL AND expires>?",(uid,key,s.now())).fetchone()):
+                raise HTTPException(409,"请先移走文件，并处理此文件夹的回收站文件和上传任务。")
+            c.execute("DELETE FROM cloud_folders WHERE uid=? AND id=?",(uid,key))
+        else:
+            name=cs.clean_name(body.name)
+            if c.execute("SELECT 1 FROM cloud_folders WHERE uid=? AND folded=? AND id!=?",(uid,name.casefold(),key)).fetchone():
+                raise HTTPException(409,"文件夹名称重复。")
+            c.execute("UPDATE cloud_folders SET name=?,folded=? WHERE uid=? AND id=?",(name,name.casefold(),uid,key))
+    return {"ok":True}
 
 class Upload(Named):
     size:int=Field(ge=1,le=5_000_000_000)
@@ -331,16 +355,39 @@ def download(key:str,req:Request,version:str=""):
         v=c.execute("SELECT * FROM cloud_versions WHERE file_id=? AND id=?",(key,version or f["head"])).fetchone()
         if not v:
             raise HTTPException(404,"版本不存在。")
+        size=v["bytes"]
+        etag='"'+v["id"]+'"'
+        start,end=0,size-1
+        header=req.headers.get("range","")
+        partial=bool(header and req.headers.get("if-range",etag)==etag)
+        if partial:
+            match=re.fullmatch(r"bytes=(\d{0,15})-(\d{0,15})",header)
+            if match and match[1]:
+                start=int(match[1])
+                end=min(int(match[2]),end) if match[2] else end
+            elif match and match[2]:
+                start=max(0,size-int(match[2]))
+            else:
+                start=size
+            if start>end:
+                raise HTTPException(416,"下载范围无效。",headers={"Content-Range":f"bytes */{size}"})
         try:
             stream=cs.object_path(v["id"]).open("rb")
+            stream.seek(start)
         except OSError as exc:
             raise HTTPException(503,"文件对象暂不可读。") from exc
     def blocks():
         try:
-            while piece:=stream.read(256*1024):
+            remaining=end-start+1
+            while remaining and (piece:=stream.read(min(256*1024,remaining))):
                 yield piece
+                remaining-=len(piece)
         finally:
             stream.close()
-    return StreamingResponse(blocks(),media_type="application/octet-stream",headers={
-        "Content-Disposition":"attachment; filename*=UTF-8''"+quote(f["name"],safe=""),"Content-Length":str(v["bytes"]),"ETag":'"'+v["id"]+'"'})
+    headers={"Content-Disposition":"attachment; filename*=UTF-8''"+quote(f["name"],safe=""),"Content-Length":str(end-start+1),
+             "ETag":etag,"Accept-Ranges":"bytes"}
+    if partial:
+        headers["Content-Range"]=f"bytes {start}-{end}/{size}"
+    return StreamingResponse(blocks(),media_type="application/octet-stream",headers=headers,status_code=206 if partial else 200,
+                             background=BackgroundTask(stream.close))
 
