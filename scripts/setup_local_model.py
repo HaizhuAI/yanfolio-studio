@@ -93,10 +93,16 @@ if __name__=="__main__":
         raise SystemExit("This runtime setup targets Windows x64.")
     parser=argparse.ArgumentParser()
     parser.add_argument("--modelscope",action="store_true",help="Use Qwen's ModelScope mirror with identical SHA-256 verification.")
+    parser.add_argument("--with-fast",action="store_true",help="Also install the smaller writing model.")
     options=parser.parse_args()
     ROOT.mkdir(exist_ok=True)
     with ThreadPoolExecutor(2) as pool:
         jobs=[pool.submit(runtime),pool.submit(model,options.modelscope)]
+        if options.with_fast:
+            name = "qwen2.5-0.5b-instruct-q4_k_m.gguf"
+            url = ("https://modelscope.cn/models/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/master/" if options.modelscope else
+                   "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/9217f5db79a29953eb74d5343926648285ec7e67/")+name
+            jobs.append(pool.submit(download,url,name,491400032,"74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",16*1024*1024,12))
         for job in jobs:
             job.result()
 
