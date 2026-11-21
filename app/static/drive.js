@@ -36,6 +36,7 @@ async function load(){
  const my=++seq,params=new URLSearchParams({folder,trash,page,q:$("query").value.trim()});
  const [d,pending]=await Promise.all([YF.api("/api/drive?"+params),YF.api("/api/drive/transfers")]);if(my!==seq)return;library=d;
  $("root").classList.toggle("current",!folder&&!trash);$("trash").classList.toggle("current",trash);$("folders").replaceChildren(...d.folders.map(f=>act(f.name,()=>nav(f.id),"folder"+(folder===f.id&&!trash?" current":""))));
+ $("folder-actions").hidden=!folder||trash;
  $("location").textContent=trash?"回收站":folder?d.folders.find(f=>f.id===folder)?.name||"文件夹":"根目录";
  $("upload").disabled=!!abort||trash||!d.storage.uploads_enabled;$("upload").textContent=d.storage.uploads_enabled?"上传文档":"上传已暂停";
  $("quota-label").textContent=fmt(d.storage.used)+" / "+fmt(d.storage.quota);$("meter").value=d.storage.quota?100*d.storage.used/d.storage.quota:0;
@@ -56,3 +57,6 @@ $("file-input").onchange=async()=>{
 async function start(){const u=await YF.api("/api/me");YF.account=u.id;await load();}
 start().catch(e=>say(e.message));document.addEventListener("visibilitychange",()=>{if(!document.hidden&&YF.account&&!abort)load().catch(e=>say(e.message));});
 
+
+$("rename-folder").onclick=async()=>{const n=prompt("文件夹新名称",$("location").textContent);if(!n)return;try{await YF.api("/api/drive/folders/"+folder,"POST",{action:"rename",name:n});await load();}catch(e){say(e.message);}};
+$("remove-folder").onclick=async()=>{if(!confirm("删除此空文件夹？"))return;try{await YF.api("/api/drive/folders/"+folder,"POST",{action:"remove"});await nav("");}catch(e){say(e.message);}};

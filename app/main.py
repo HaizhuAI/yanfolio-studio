@@ -111,6 +111,11 @@ def landing():
     return FileResponse(Path(__file__).parent/"static"/"landing.html")
 
 
+@app.get("/yanfolio-field.webp")
+def landing_art():
+    return FileResponse(Path(__file__).parent/"static"/"yanfolio-field.webp",media_type="image/webp")
+
+
 @app.get("/studio")
 def studio():
     return FileResponse(Path(__file__).parent/"static"/"index.html")

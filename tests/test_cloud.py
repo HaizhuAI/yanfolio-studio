@@ -72,6 +72,10 @@ def test_upload_resume_two_clients_private_download_and_orphan_tail(monkeypatch)
     assert a.post(f"/api/drive/uploads/{u}/finish",json={}).json()==f
     path="/api/drive/files/"+f["file_id"]
     assert a.get(path+"/download").content==data
+    response=a.get(path+"/download",headers={"Range":"bytes=3-5"})
+    assert response.status_code==206 and response.content==b"456"
+    assert a.get(path+"/download",headers={"Range":"bytes=-2"}).content==b"89"
+    assert a.get(path+"/download",headers={"Range":"bytes=99-"}).status_code==416
     assert a.get("/api/drive?folder="+folder).json()["storage"]["used"]==len(data)
     assert b.get(path+"/download").status_code==404
     assert b.get(path+"/versions").status_code==404

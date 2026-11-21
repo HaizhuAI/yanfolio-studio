@@ -272,6 +272,10 @@ def finish(key:str,req:Request):
             fid,seq=cs.new_id(),1
             c.execute("INSERT INTO cloud_files VALUES(?,?,?,?,?,?,?,NULL)",(fid,uid,u["folder"],u["name"],u["name"].casefold(),key,s.now()))
         c.execute("INSERT INTO cloud_versions VALUES(?,?,?,?,?)",(key,fid,seq,u["total"],s.now()))
+        manifest=hashlib.sha256()
+        for row in c.execute("SELECT sha FROM cloud_parts WHERE upload=? ORDER BY offset",(key,)):
+            manifest.update(bytes.fromhex(row[0]))
+        c.execute("INSERT INTO cloud_hashes VALUES(?,?,?)",(key,cs.CHUNK_BYTES,manifest.hexdigest()))
         c.execute("UPDATE cloud_uploads SET completed=?,expires=? WHERE id=?",(fid,s.now()+cs.UPLOAD_TTL,key))
         c.execute("DELETE FROM cloud_parts WHERE upload=?",(key,))
         return {"file_id":fid,"version":key}

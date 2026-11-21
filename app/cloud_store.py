@@ -29,6 +29,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS cloud_names ON cloud_files(uid,folder,folded) 
 CREATE INDEX IF NOT EXISTS cloud_by_user ON cloud_files(uid,trashed,modified);
 CREATE TABLE IF NOT EXISTS cloud_versions(id TEXT PRIMARY KEY,file_id TEXT NOT NULL REFERENCES cloud_files(id) ON DELETE CASCADE,
  seq INTEGER NOT NULL,bytes INTEGER NOT NULL CHECK(bytes>=0),created INTEGER NOT NULL,UNIQUE(file_id,seq));
+CREATE TABLE IF NOT EXISTS cloud_hashes(version TEXT PRIMARY KEY REFERENCES cloud_versions(id) ON DELETE CASCADE,
+ chunk_size INTEGER NOT NULL, digest TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS cloud_uploads(id TEXT PRIMARY KEY,uid INTEGER NOT NULL REFERENCES users(id),name TEXT NOT NULL,
  folder TEXT NOT NULL,target TEXT,base TEXT,total INTEGER NOT NULL,received INTEGER NOT NULL DEFAULT 0,
  expires INTEGER NOT NULL,completed TEXT,client_id TEXT NOT NULL,UNIQUE(uid,client_id));
