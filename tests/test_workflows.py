@@ -1,5 +1,6 @@
 import asyncio
-import base64
+import struct
+import zlib
 from io import BytesIO
 from zipfile import ZipFile
 
@@ -34,6 +35,11 @@ def fixtures():
     p.add_run("保留强调").italic = True
     field = OxmlElement("w:fldSimple")
     field.set(qn("w:instr")," REF Fig1 \\h ")
+    cached = OxmlElement("w:r")
+    cached_text = OxmlElement("w:t")
+    cached_text.text = "表 1"
+    cached.append(cached_text)
+    field.append(cached)
     p._p.append(field)
     math = OxmlElement("m:oMath")
     run = OxmlElement("m:r")
@@ -43,9 +49,26 @@ def fixtures():
     math.append(run)
     p._p.append(math)
     source.sections[0].header.paragraphs[0].text="研究手稿"
-    source.add_table(rows=1,cols=1).cell(0,0).text="保留表格"
-    image = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=")
-    source.add_picture(BytesIO(image),width=Cm(.6))
+    table = source.add_table(rows=1,cols=2)
+    table.style="Table Grid"
+    caption = table.cell(0,0).paragraphs[0]
+    mark = OxmlElement("w:bookmarkStart")
+    mark.set(qn("w:id"),"0")
+    mark.set(qn("w:name"),"Fig1")
+    caption._p.append(mark)
+    caption.add_run("表 1")
+    end = OxmlElement("w:bookmarkEnd")
+    end.set(qn("w:id"),"0")
+    caption._p.append(end)
+    table.cell(0,1).text="保留表格"
+    def chunk(kind,data):
+        return struct.pack(">I",len(data))+kind+data+struct.pack(">I",zlib.crc32(kind+data))
+    width,height = 80,20
+    # A two-colour measurement strip with valid PNG checksums.
+    row = b"\x00"+bytes([48,108,85])*(width//2)+bytes([196,140,62])*(width//2)
+    image = b"\x89PNG\r\n\x1a\n"+chunk(b"IHDR",struct.pack(">IIBBBBB",width,height,8,2,0,0,0))
+    image += chunk(b"IDAT",zlib.compress(row*height))+chunk(b"IEND",b"")
+    source.add_picture(BytesIO(image),width=Cm(3))
     template = Document()
     template.sections[0].left_margin=Cm(3)
     template.add_heading("方法",1).alignment=WD_ALIGN_PARAGRAPH.CENTER
