@@ -18,3 +18,10 @@
 !/docs/*.md
 !/tests/
 !/tests/*.py
+!/.dockerignore
+!/desktop/
+!/desktop/*.cs
+!/deploy/
+!/deploy/Dockerfile
+!/deploy/Caddyfile
+!/deploy/compose.yaml

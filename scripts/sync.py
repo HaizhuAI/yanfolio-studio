@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[1]
 ENV = {**os.environ, "GIT_TERMINAL_PROMPT":"0", "GCM_INTERACTIVE":"Never"}
 LOG = ROOT/".git"/"yanfolio-sync.log"
-PATHS = [".gitignore",".gitattributes","README.md","LICENSE","requirements.txt","start.ps1",
+PATHS = [".dockerignore","deploy/Dockerfile","deploy/Caddyfile","deploy/compose.yaml",":(glob)desktop/*.cs",".gitignore",".gitattributes","README.md","LICENSE","requirements.txt","start.ps1",
          ":(glob)app/*.py",":(glob)app/static/*.html",":(glob)app/static/*.js",":(glob)app/static/*.css",
          ":(glob)scripts/*.py",":(glob)scripts/*.ps1",":(glob)docs/*.md",":(glob)tests/*.py"]
 
