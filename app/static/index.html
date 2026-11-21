@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f6f2"><title>砚稿 Yanfolio · 学术写作工作台</title><link rel="stylesheet" href="/style.css"><script defer src="/workspace.js"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f6f2"><title>砚稿 Yanfolio · 学术写作工作台</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/account.css"><script defer src="/common.js"></script><script defer src="/workspace.js"></script></head>
 <body>
 <div class="shell">
 <aside class="sidebar">
@@ -9,11 +9,12 @@
  <div class="nav-label">工作空间</div>
  <nav aria-label="工作空间"><button data-view="write" class="nav active"><i data-icon="pen"></i>论文创作</button><button data-view="search" class="nav"><i data-icon="search"></i>文献检索</button><button data-view="format" class="nav"><i data-icon="layout"></i>格式工作室</button></nav>
  <div class="nav-label drafts-label">我的手稿</div><div id="drafts" class="drafts"></div>
- <div class="sidebar-foot"><i data-icon="drive"></i><div>本机工作区<small>草稿保存在此浏览器</small></div></div>
+ <div class="sidebar-foot"><i data-icon="drive"></i><div>账号工作区<small id="account-email">正在载入</small></div></div>
 </aside>
 <div class="workspace">
- <header class="topbar"><div><span class="crumb">工作空间</span><span class="slash">/</span><span id="breadcrumb">论文创作</span></div><span id="save-state" class="saved"><i data-icon="check"></i>已保存到本机</span></header>
+ <header class="topbar"><div><span class="crumb">工作空间</span><span class="slash">/</span><span id="breadcrumb">论文创作</span></div><div class="account-links"><a href="/wallet.html" id="wallet-link">点数钱包</a><a href="/admin.html" id="admin-link" hidden>运营后台</a><button class="text-btn" id="logout">退出</button><span id="save-state" class="saved"><i data-icon="check"></i>已同步</span></div></header>
  <main>
+ <div id="recovery" class="save-warning" hidden><span id="recovery-msg"></span> <button class="text-btn" id="merge">合并为独立副本</button></div><button id="legacy" hidden class="text-btn">导入本浏览器的旧版手稿</button>
  <section id="view-write">
  <div class="page-head"><div><div class="eyebrow">MANUSCRIPT STUDIO</div><h1>论文创作</h1></div><div class="head-actions"><button id="import" class="button" title="提取 Word 正文创建手稿；原稿套版可直接进入格式工作室">导入正文</button><input id="import-file" type="file" accept=".docx" hidden><button id="export" class="button"><i data-icon="download"></i>导出 Word</button></div></div>
  <div class="writing-grid"><div class="editor-col"><article class="paper"><div class="paper-top"><span class="paper-type"><span class="small-rule"></span>研究手稿</span><small id="paper-id"></small></div>
@@ -23,7 +24,7 @@
  <label class="sr" for="body">论文正文</label><textarea id="body" spellcheck="false" maxlength="500000" placeholder="写下你的研究问题、方法或已有发现……"></textarea>
  <div id="bibliography"></div>
  </article></div>
- <aside class="inspector"><div class="assistant panel"><div class="panel-title"><span class="accent-icon"><i data-icon="spark"></i></span><h2>写作助手</h2></div><div class="charmodes" role="group" aria-label="写作任务"><button data-mode="polish" class="selected">学术润色</button><button data-mode="outline">拟定大纲</button><button data-mode="draft">段落起草</button><button data-mode="review">同行评阅</button></div><label for="prompt">写作要求</label><textarea id="prompt" maxlength="2000" rows="3" placeholder="例如，保留研究假设，精简重复表述。"></textarea><button id="generate" class="primary"><i data-icon="spark"></i>生成建议</button><small id="model-info"></small><div id="suggestion" hidden><h3>待审阅建议</h3><div id="suggest-text" tabindex="0"></div><div class="actions"><button class="button" id="accept">采纳建议</button><button class="text-btn" id="discard">忽略</button></div></div></div>
+ <aside class="inspector"><div class="assistant panel"><div class="panel-title"><span class="accent-icon"><i data-icon="spark"></i></span><h2>写作助手</h2></div><div class="expert-fields"><label class="wide">写作模型<select id="model"></select></label><label>学科专家<select id="expert"></select></label><label>专业程度<select id="level"></select></label></div><small id="expert-note"></small><div class="charmodes" role="group" aria-label="写作任务"><button data-mode="polish" class="selected">学术润色</button><button data-mode="outline">拟定大纲</button><button data-mode="draft">段落起草</button><button data-mode="review">同行评阅</button></div><label for="prompt">写作要求</label><textarea id="prompt" maxlength="2000" rows="3" placeholder="例如，保留研究假设，精简重复表述。"></textarea><button id="generate" class="primary"><i data-icon="spark"></i>生成建议</button><div class="quote-box" id="quote-box" hidden><div id="quote-detail"></div><button class="button" id="confirm-run">确认生成</button> <button class="text-btn" id="cancel-run">取消</button></div><small id="model-info"></small><div id="suggestion" hidden><h3>待审阅建议</h3><div id="suggest-text" tabindex="0"></div><div class="actions"><button class="button" id="accept">采纳建议</button><button class="text-btn" id="discard">忽略</button></div></div></div>
  <div class="panel"><div class="panel-title"><i data-icon="bookmark"></i><h2>文献夹</h2><span id="library-count" class="count">0</span></div><div id="library"></div><button class="text-btn" data-view="search"><i data-icon="search"></i>检索文献</button></div>
  </aside></div></section>
  <section id="view-search" hidden><div class="page-head"><div><div class="eyebrow">LITERATURE SEARCH</div><h1>文献检索</h1></div></div>

@@ -122,14 +122,14 @@ def send_code(body:Code,req:Request):
         if bool(exists)==(body.purpose=="reset"):
             c.execute("INSERT OR REPLACE INTO challenges VALUES(?,?,?,?)",(addr,body.purpose,code_hash(addr,body.purpose,value),s.now()+600))
         else:
-            return {"sent":True}
+            return {"sent":True,"local":not bool(os.getenv("YANFOLIO_SMTP_HOST"))}
     try:
         deliver(addr,value,body.purpose)
     except (RuntimeError,OSError,ValueError,KeyError,smtplib.SMTPException) as exc:
         with s.db(True) as c:
             c.execute("DELETE FROM challenges WHERE email=? AND purpose=? AND hash=?",(addr,body.purpose,code_hash(addr,body.purpose,value)))
         raise HTTPException(503,"邮件发送失败，请由管理员检查发信服务。") from exc
-    return {"sent":True}
+    return {"sent":True,"local":not bool(os.getenv("YANFOLIO_SMTP_HOST"))}
 
 
 def consume(c,addr,purpose,code):

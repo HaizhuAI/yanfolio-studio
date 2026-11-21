@@ -1,4 +1,7 @@
 "use strict";
+async function openWorkspace(){
+const user=await YF.api("/api/me");YF.account=user.id;
+const [remote,catalog]=await Promise.all([YF.api("/api/workspace"),YF.api("/api/catalog")]);
 const $ = id => document.getElementById(id);
 const make = (tag, text, cls) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (cls) el.className = cls; return el; };
 const paths = {
@@ -16,31 +19,52 @@ document.querySelectorAll("[data-icon]").forEach(el => {
   svg.setAttribute("viewBox","0 0 24 24"); svg.setAttribute("class","icon"); svg.setAttribute("aria-hidden","true");
   path.setAttribute("d",paths[el.dataset.icon]); svg.append(path); el.replaceWith(svg);
 });
-const storageKey = "yanfolio.workspace.v1";
+const storageKey="yanfolio.pending."+user.id+"."+user.email;
+const legacyKey="yanfolio.workspace.v1";
+let version=remote.version, synced=JSON.stringify(remote.content), saving=false, conflict=false, saveTimer;
 const blank = () => ({id:crypto.randomUUID(),title:"",text:"",references:[],updated:Date.now()});
 const sample = blank();
 sample.title = "城市绿地与夏季地表温度";
 sample.text = "研究问题\n\n在相近的建成环境中，不同类型的城市绿地与周边地表温度之间存在怎样的关联？\n\n研究设计\n\n本研究拟结合夏季遥感影像与土地覆盖数据，比较乔木、草地和混合植被周边的地表温度。分析将区分绿地内部与邻近街区，并记录影像采集时间、空间分辨率和天气条件。\n\n待补充的证据\n\n确定研究区域与观测时段，核对数据来源，并检索已有研究对空间尺度的处理方法。";
 sample.example = true;
-function initial() {
-  const item = localStorage.getItem(storageKey);
-  if (!item) return {active:sample.id,docs:[sample],library:[]};
-  const parsed = JSON.parse(item);
-  if (!Array.isArray(parsed.docs) || !parsed.docs.length || !Array.isArray(parsed.library)) throw Error("无法读取已保存的工作区。");
-  return parsed;
-}
-let state;
-try { state=initial(); } catch (error) { document.querySelector("main").textContent="浏览器存储不可用或草稿数据损坏，请先检查浏览器存储权限和备份。"; throw error; }
+const initial=()=>({active:sample.id,docs:[sample],library:[]});
+let state=remote.content||initial();
+const pending=localStorage.getItem(storageKey);
+if(pending){const stored=JSON.parse(pending);state=stored.content;conflict=stored.version!==version&&JSON.stringify(state)!==synced;}
+function walletBalance(n){$("wallet-link").textContent=n+" 点 · 钱包";}
+walletBalance(user.balance);$("admin-link").hidden=user.role!=="admin";$("account-email").textContent=user.email;
+$("model").replaceChildren(...catalog.models.map(m=>new Option(m.label+" · "+m.fee+" 点起",m.id)));
+$("expert").replaceChildren(...catalog.experts.map(x=>new Option(x.name,x.id)));$("level").replaceChildren(...catalog.levels.map(x=>new Option(x.name,x.id)));$("level").value="research";
+function modelNote(){const m=catalog.models.find(x=>x.id===Number($("model").value));$("expert-note").textContent=catalog.experts.find(x=>x.id===$("expert").value)?.description||"";$("model-info").textContent=m?"每次调用 "+m.fee+" 点，千输入 / 输出 Token "+m.input_rate+" / "+m.output_rate+" 点。"+catalog.levels.find(x=>x.id===$("level").value).description:"暂无已启用模型。";}
+for(const id of ["model","expert","level"])$(id).addEventListener("change",modelNote);modelNote();
 const doc = () => state.docs.find(x=>x.id===state.active) || state.docs[0];
 const keyOf = r => r.doi ? "doi:"+r.doi.toLowerCase() : (r.url || r.title+"|"+r.year);
 const names = {write:"论文创作",search:"文献检索",format:"格式工作室"};
 let mode="polish", ticket=0, proposal=null, past=null, formatVersion=0, validFormat=false, liveItems=[];
 let timer;
 function notice(msg) { $("notice").textContent=msg; $("notice").hidden=false; clearTimeout(timer); timer=setTimeout(()=>$("notice").hidden=true,6500); }
-function save() {
-  try { localStorage.setItem(storageKey,JSON.stringify(state)); $("save-state").lastChild.textContent="已保存到本机"; }
-  catch { $("save-state").lastChild.textContent="本机保存失败"; notice("浏览器空间不足或存储不可用，请立即导出 Word 备份。"); }
+function saveState(label){$("save-state").lastChild.textContent=label;}
+function showConflict(){conflict=true;saveState("有版本冲突");$("recovery").hidden=false;$("recovery-msg").textContent="另一客户端已更新。可将本机改动合并为独立副本。";}
+async function flush(){
+ if(saving||conflict)return;
+ const snapshot=JSON.stringify(state);if(snapshot===synced){localStorage.removeItem(storageKey);saveState("已同步");return;}
+ saving=true;saveState("同步中");
+ try{const r=await YF.api("/api/workspace","PUT",{version,content:JSON.parse(snapshot)});version=r.version;synced=snapshot;
+  if(JSON.stringify(state)===synced){localStorage.removeItem(storageKey);saveState("已同步");}else save();}
+ catch(e){if(e.status===409)showConflict();else{saveState("待同步");notice(e.message);clearTimeout(saveTimer);saveTimer=setTimeout(flush,7000);}}
+ finally{saving=false;}
 }
+function save(){try{if(JSON.stringify(state)!==synced)localStorage.setItem(storageKey,JSON.stringify({version,content:state}));}catch{notice("本机缓冲已满，请保持页面打开并导出手稿备份。");}
+ if(conflict){showConflict();return;}clearTimeout(saveTimer);saveTimer=setTimeout(flush,350);}
+function combine(base,incoming){
+ const merged=structuredClone(base||initial());const byId=new Map(merged.docs.map(d=>[d.id,d]));
+ for(const d of incoming.docs){const other=byId.get(d.id);if(!other)merged.docs.push(d);else if(JSON.stringify(other)!==JSON.stringify(d))merged.docs.push({...d,id:crypto.randomUUID(),title:(d.title||"无题手稿")+"（本机副本）"});}
+ const known=new Set(merged.library.map(keyOf));for(const r of incoming.library){if(!known.has(keyOf(r))){merged.library.push(r);known.add(keyOf(r));}}return merged;
+}
+$("merge").onclick=async()=>{try{const fresh=await YF.api("/api/workspace");state=combine(fresh.content,state);version=fresh.version;synced=JSON.stringify(fresh.content);conflict=false;$("recovery").hidden=true;selectDoc(state.active);await flush();}catch(e){notice(e.message);}};
+$("legacy").hidden=!localStorage.getItem(legacyKey)||!!localStorage.getItem(storageKey+".imported");$("legacy").onclick=()=>{if(!confirm("将此浏览器旧版手稿复制到当前邮箱账号？"))return;try{state=combine(state,JSON.parse(localStorage.getItem(legacyKey)));selectDoc(state.active);localStorage.setItem(storageKey+".imported","1");$("legacy").hidden=true;}catch(e){notice(e.message);}};
+$("logout").onclick=async()=>{clearTimeout(saveTimer);await flush();await YF.logout();};
+window.addEventListener("online",flush);
 function show(view) {
   Object.keys(names).forEach(v=>$("view-"+v).hidden=v!==view);
   document.querySelectorAll("nav [data-view]").forEach(b=>{b.classList.toggle("active",b.dataset.view===view);b.setAttribute("aria-current",b.dataset.view===view?"page":"false");});
@@ -54,7 +78,7 @@ function manuscripts() {
 function meta() { $("wordcount").textContent=Array.from(doc().text.replace(/\s/g,"")).length.toLocaleString()+" 字"; }
 function clearSuggestion() { proposal=null; $("suggestion").hidden=true; }
 function selectDoc(id) {
-  state.active=id; ++ticket; clearSuggestion(); past=null; $("undo").disabled=true; $("generate").disabled=false; $("generate").lastChild.textContent="生成建议";
+  state.active=id; $("quote-box").hidden=true; ++ticket; clearSuggestion(); past=null; $("undo").disabled=true; $("generate").disabled=false; $("generate").lastChild.textContent="生成建议";
   $("doc-title").value=doc().title; $("body").value=doc().text; $("paper-id").textContent=doc().example?"示例手稿":"个人手稿";meta();manuscripts();library();save();
 }
 $("new").onclick=()=>{const d=blank();state.docs.unshift(d);selectDoc(d.id);show("write");$("doc-title").focus();};
@@ -81,7 +105,7 @@ function library() {
   doc().references.forEach((r,i)=>refs.append(make("p","["+(i+1)+"] "+r.title+" · "+r.year,"reference-line")));
 }
 async function request(url,options={}) {
-  const response=await fetch(url,options);
+  const response=await fetch(url,{...options,headers:{...options.headers,"X-Yanfolio-Request":"1","X-Yanfolio-Account":String(user.id)}});if(response.status===401)location.replace("/login.html");
   if (!response.ok) { const value=await response.json().catch(()=>({}));throw Error(typeof value.detail==="string"?value.detail:"请求未完成，请检查输入后重试。"); }
   return response;
 }
@@ -107,17 +131,30 @@ $("use-draft").onclick=async()=>{
 document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{
   mode=b.dataset.mode;document.querySelectorAll("[data-mode]").forEach(el=>el.classList.toggle("selected",el===b));
 });
+let prepared=null;
+function writingInput(){const d=doc(),area=$("body");return {title:d.title,text:d.text,references:d.references,action:mode,selection:d.text.slice(area.selectionStart,area.selectionEnd),instruction:$("prompt").value,model_id:Number($("model").value),expert:$("expert").value,level:$("level").value};}
 $("generate").onclick=async()=>{
-  const btn=$("generate"), area=$("body"), d=doc(), id=++ticket, start=area.selectionStart,end=area.selectionEnd;
-  const snapshot={docId:d.id,raw:d.text,title:d.title,start,end,mode};
-  clearSuggestion();btn.disabled=true;btn.lastChild.textContent="正在生成…";
-  try{
-    const response=await request("/api/write",post({...d,action:mode,selection:d.text.slice(start,end),instruction:$("prompt").value}));
-    const result=await response.json(); if(id!==ticket) return;
-    proposal={...snapshot,text:result.suggestion};$("suggest-text").textContent=result.suggestion;
-    if(result.unlinked_citations?.length) $("suggest-text").prepend(make("p","以下新增引文编号未关联本文题录，请先核对："+result.unlinked_citations.map(n=>"["+n+"]").join("、"),"citation-note"));
-    $("accept").textContent=snapshot.mode==="polish"?(start===end?"替换正文":"替换选区"):"追加到正文";$("suggestion").hidden=false;
-  }catch(e){if(id===ticket)notice(e.message);}finally{if(id===ticket){btn.disabled=false;btn.lastChild.textContent="生成建议";}}
+ const btn=$("generate"),input=writingInput(),d=doc(),area=$("body"),id=++ticket;
+ const snapshot={docId:d.id,raw:d.text,title:d.title,start:area.selectionStart,end:area.selectionEnd,mode};
+ btn.disabled=true;clearSuggestion();$("quote-box").hidden=true;
+ try{const q=await YF.api("/api/write/quote","POST",input);if(ticket!==id)return;
+  walletBalance(q.balance);prepared={id,snapshot,input,request_id:crypto.randomUUID(),quote:q.quote};
+  $("quote-detail").textContent=q.label+" · "+q.expert+" · "+q.passes+" 次调用。最多扣 "+q.maximum+" 点，余额 "+q.balance+" 点。";
+  $("confirm-run").disabled=q.balance<q.maximum;$("quote-box").hidden=false;
+ }catch(e){notice(e.message);}finally{if(ticket===id)btn.disabled=false;}
+};
+$("cancel-run").onclick=()=>{prepared=null;$("quote-box").hidden=true;};
+$("confirm-run").onclick=async()=>{
+ const p=prepared;if(!p)return;
+ if(p.snapshot.docId!==doc().id||JSON.stringify(p.input)!==JSON.stringify(writingInput())){prepared=null;$("quote-box").hidden=true;notice("输入已变化，请重新获取报价。");return;}
+ const btn=$("generate");btn.disabled=true;$("confirm-run").disabled=true;btn.lastChild.textContent="正在生成…";
+ try{const result=await YF.api("/api/write","POST",{...p.input,quote:p.quote,request_id:p.request_id});if(p.id!==ticket)return;
+  walletBalance(result.balance);proposal={...p.snapshot,text:result.suggestion};$("suggest-text").textContent=result.suggestion;
+  if(result.unlinked_citations?.length)$("suggest-text").prepend(make("p","请核对未关联的引文 "+result.unlinked_citations.join("、"),"citation-note"));
+  if(result.new_percentages?.length)$("suggest-text").prepend(make("p","需核对新增百分数 "+result.new_percentages.join("、"),"citation-note"));
+  $("model-info").textContent=result.expert+" · 已完成 "+result.passes+" 次调用，本次实收 "+result.charged+" 点。";
+  $("accept").textContent=p.snapshot.mode==="polish"?(p.snapshot.start===p.snapshot.end?"替换正文":"替换选区"):"追加到正文";$("suggestion").hidden=false;$("quote-box").hidden=true;prepared=null;
+ }catch(e){notice(e.message);if(e.status){prepared=null;$("quote-box").hidden=true;}}finally{if(ticket===p.id){btn.disabled=false;$("confirm-run").disabled=false;btn.lastChild.textContent="生成建议";}}
 };
 $("discard").onclick=clearSuggestion;
 $("accept").onclick=()=>{
@@ -178,6 +215,7 @@ $("apply-format").onclick=async()=>{
   catch(e){notice(e.message);}finally{$("apply-format").disabled=!validFormat;}
 };
 selectDoc(doc().id);
-request("/api/status").then(r=>r.json()).then(s=>{$("model-info").textContent=s.ai?"生成时将把所选文字及本文题录发送给 "+s.model+"。":"写作模型待配置，可继续编辑、检索和排版。";}).catch(()=>{$("model-info").textContent="服务暂不可用。";});
-window.addEventListener("storage",e=>{if(e.key===storageKey&&e.newValue){state=initial();selectDoc(state.active);if(liveItems.length)drawResults();}});
-
+if(conflict)showConflict();
+document.addEventListener("visibilitychange",async()=>{if(document.visibilityState==="hidden"){await flush();return;}try{const account=await YF.api("/api/me");if(account.id!==user.id)location.reload();else walletBalance(account.balance);}catch{}});
+}
+openWorkspace().catch(e=>{document.querySelector("main").textContent=e.message;});

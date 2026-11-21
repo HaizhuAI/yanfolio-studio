@@ -68,6 +68,9 @@ async def access(request, call_next):
             return RedirectResponse("/login.html",303,headers={"Cache-Control":"no-store"})
         if (path.startswith("/api/admin/") or path in ("/admin.html","/admin.js")) and user["role"]!="admin":
             return JSONResponse({"detail":"需要管理员权限。"},403)
+        expected=request.headers.get("x-yanfolio-account")
+        if expected and expected!=str(user["id"]):
+            return JSONResponse({"detail":"登录账号已变更，请重新打开工作台。"},409)
         request.state.user=user
     response=await call_next(request)
     response.headers["X-Content-Type-Options"]="nosniff"
