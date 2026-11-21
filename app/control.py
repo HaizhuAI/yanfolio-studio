@@ -142,6 +142,7 @@ def overview(req:Request,q:str=""):
             return [dict(r) for r in c.execute(sql,args)]
         return {"metrics":dict(c.execute("SELECT (SELECT count(*) FROM users WHERE role='user') users,(SELECT coalesce(sum(points),0) FROM vouchers WHERE uid IS NOT NULL) redeemed,(SELECT coalesce(sum(charged),0) FROM jobs WHERE status='done') consumed,(SELECT count(*) FROM jobs WHERE status='done') jobs").fetchone()),
                 "models":rows("SELECT id,label,model,base,fee,input_rate,output_rate,max_output,enabled,(secret!='') has_secret FROM models ORDER BY id"),
+                "usage":rows("SELECT model_id,label,sum(passes) calls,sum(input_tokens) inputs,sum(output_tokens) outputs,sum(points) points,sum(1-reported) incomplete FROM usage GROUP BY model_id,label ORDER BY points DESC"),
                 "packs":rows("SELECT * FROM packs ORDER BY id"),
                 "batches":rows("SELECT batch,label,points,cents,count(*) issued,count(uid) redeemed,sum(revoked) revoked,max(created) created FROM vouchers GROUP BY batch ORDER BY created DESC LIMIT 100"),
                 "users":rows("SELECT id,email,role,active,balance,created FROM users WHERE instr(email,?)>0 ORDER BY id DESC LIMIT 100",(q.strip().casefold()[:254],)),

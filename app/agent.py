@@ -193,6 +193,8 @@ async def execute(req:Execution,request:Request):
             result={"suggestion":text,"model":model["label"],"expert":EXPERTS[expert][0],"passes":passes,"charged":charged,"balance":balance,
                     "usage":{"input":counts[0],"output":counts[1],"reported":reported},"unlinked_citations":unlinked,
                     "new_percentages":sorted(numbers(text)-numbers(source))}
+            c.execute("INSERT INTO usage VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                      (uid,rid,model["id"],model["label"],EXPERTS[expert][0],LEVELS[req.level][0],*counts,passes,charged,reported,s.now()))
             c.execute("UPDATE jobs SET status='done',charged=?,result=? WHERE uid=? AND id=?",
                       (charged,s.protect(json.dumps(result,ensure_ascii=False)),uid,rid))
         return result

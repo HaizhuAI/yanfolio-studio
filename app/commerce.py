@@ -15,8 +15,9 @@ def wallet(req:Request):
         expire(c)
         balance=c.execute("SELECT balance FROM users WHERE id=?",(uid,)).fetchone()[0]
         history=[dict(x) for x in c.execute("SELECT delta,after,kind,note,created FROM ledger WHERE uid=? ORDER BY id DESC LIMIT 100",(uid,))]
+        usage=[dict(x) for x in c.execute("SELECT label,expert,level,input_tokens,output_tokens,passes,points,reported,created FROM usage WHERE uid=? ORDER BY created DESC,rowid DESC LIMIT 50",(uid,))]
         packs=[dict(x) for x in c.execute("SELECT id,label,points,cents FROM packs WHERE enabled=1 ORDER BY cents")]
-    return {"balance":balance,"ledger":history,"packs":packs}
+    return {"balance":balance,"ledger":history,"packs":packs,"usage":usage}
 
 
 class Redeem(BaseModel):
