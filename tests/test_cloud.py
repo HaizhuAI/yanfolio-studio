@@ -107,6 +107,17 @@ def test_quota_atomic_reservations_and_upload_pause():
     assert not cs.object_path(key).exists()
 
 
+def test_exact_free_allowance_is_per_account(monkeypatch):
+    monkeypatch.setattr(cs,"available_volume",lambda:50_000_000_000)
+    a,b=seed(),seed("independent@example.org")
+    body={**spec("数据.csv",b"x"),"size":5_000_000_000}
+    assert a.post("/api/drive/uploads",json=body).status_code==200
+    assert a.post("/api/drive/uploads",json=spec("extra.txt",b"x")).status_code==413
+    assert a.get("/api/profile").json()["storage"]["reserved"]==5_000_000_000
+    assert b.get("/api/profile").json()["storage"]["available"]==5_000_000_000
+    assert b.post("/api/drive/uploads",json={**body,"size":5_000_000_001}).status_code==422
+
+
 def test_versions_trash_conflict_and_release():
     a=seed()
     original=create(a,"现场.md",b"one")

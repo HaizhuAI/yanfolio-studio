@@ -47,6 +47,14 @@ def objects():
     return Path(os.environ.get("YANFOLIO_OBJECT_DIR",s.directory()/"objects"))
 
 
+def prepare_volume():
+    path=objects().resolve()
+    public_roots=(s.ROOT/"app"/"static",s.ROOT/"dist")
+    if any(path.is_relative_to(root.resolve()) for root in public_roots):
+        raise ValueError("The document volume must be outside public assets and distribution.")
+    path.mkdir(parents=True,exist_ok=True,mode=0o700)
+
+
 def object_path(key):
     if not re.fullmatch(r"[a-f0-9]{32}",key):
         raise ValueError("Invalid internal object identifier.")
@@ -132,7 +140,10 @@ def collect():
 
 
 def available_volume():
-    return shutil.disk_usage(objects()).free
+    try:
+        return shutil.disk_usage(objects()).free
+    except OSError as exc:
+        raise HTTPException(503,"文档存储卷暂不可用。") from exc
 
 
 def new_id():

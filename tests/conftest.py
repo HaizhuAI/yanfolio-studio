@@ -11,7 +11,7 @@ def isolated_service(tmp_path,monkeypatch):
     monkeypatch.setenv("YANFOLIO_PUBLIC_URL","http://127.0.0.1:8769")
     monkeypatch.setenv("YANFOLIO_AI_BASE_URL","http://localhost:3000/v1")
     monkeypatch.setenv("YANFOLIO_AI_MODEL","test-model")
-    for k in ("YANFOLIO_SMTP_HOST","YANFOLIO_MASTER_KEY","YANFOLIO_FAST_BASE_URL"):
+    for k in ("YANFOLIO_SMTP_HOST","YANFOLIO_MASTER_KEY","YANFOLIO_FAST_BASE_URL","YANFOLIO_OBJECT_DIR"):
         monkeypatch.delenv(k,raising=False)
     store.init()
 
