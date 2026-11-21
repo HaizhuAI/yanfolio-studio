@@ -6,3 +6,5 @@ document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>select(b.datas
 by("send-code").onclick=async()=>{if(!by("email").reportValidity())return;const b=by("send-code");b.disabled=true;try{const r=await YF.api("/api/auth/code","POST",{email:by("email").value,purpose:mode});by("response").textContent=r.local?"本机验收模式：请到服务数据目录的 mail 文件夹读取验证码。":"请查收与这个邮箱对应的验证码，10 分钟内有效。";cooldown=60;const timer=setInterval(()=>{b.textContent=--cooldown+" 秒";if(!cooldown){clearInterval(timer);b.textContent="获取验证码";b.disabled=false;}},1000);}catch(e){by("response").textContent=e.message;b.disabled=false;}};
 by("auth-form").onsubmit=async e=>{e.preventDefault();const b=by("submit");b.disabled=true;try{await YF.api("/api/auth/"+mode,"POST",{email:by("email").value,password:by("password").value,code:by("code").value});if(mode==="reset"){select("login");by("response").textContent="密码已更新，请重新登录。";}else location.replace("/");}catch(err){by("response").textContent=err.message;}finally{b.disabled=false;}};
 
+
+YF.api("/api/auth/options").then(o=>by("desktop-download").hidden=!o.desktop).catch(()=>{});

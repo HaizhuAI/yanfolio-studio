@@ -53,6 +53,8 @@ docker compose -f deploy/compose.yaml up -d --build
 docker compose -f deploy/compose.yaml exec app python scripts/create_admin.py --email operator@example.com
 ~~~
 
+运行 python scripts/build_web.py 可生成运营交付包 dist/Yanfolio-Web.zip，其中包括服务端、网页和部署文件，以及已构建的桌面程序。网站登录页可下载 Windows 客户端。交付包限运营方持有。
+
 构建面向客户的桌面程序时，将 --service-url 改为已部署的 HTTPS 地址。Windows 客户端需 WebView2 Evergreen。数据库、主密钥、验证码、管理员凭据、上游模型权重与构建产物均排除在源码同步范围外。[完整架构、结算与备份](docs/architecture.md)
 
 ## 开发验证与源码同步
