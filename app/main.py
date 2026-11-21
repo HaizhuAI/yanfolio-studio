@@ -8,6 +8,9 @@ from urllib.parse import urlparse
 
 import httpx
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt, RGBColor
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -221,6 +224,25 @@ async def import_manuscript(manuscript: UploadFile = File(...)):
 @app.post("/api/export")
 def export(req: Manuscript):
     doc = Document()
+    page = doc.sections[0]
+    page.page_width,page.page_height = Cm(21),Cm(29.7)
+    page.left_margin = page.right_margin = page.top_margin = page.bottom_margin = Cm(2.54)
+    for name,size in (("Normal",12),("Title",20),("Heading 1",16),("Heading 2",14),("Heading 3",12)):
+        style = doc.styles[name]
+        style.font.name = "Times New Roman"
+        style.font.size = Pt(size)
+        style.font.color.rgb = RGBColor.from_string("202020")
+        style.font.bold = name!="Normal"
+        fonts = style.element.get_or_add_rPr().rFonts
+        for key in ("asciiTheme","hAnsiTheme","eastAsiaTheme","cstheme"):
+            fonts.attrib.pop(qn("w:"+key),None)
+        fonts.set(qn("w:eastAsia"),"宋体" if name=="Normal" else "黑体")
+        if name=="Title":
+            style.paragraph_format.alignment=WD_ALIGN_PARAGRAPH.CENTER
+            border = style.element.find("w:pPr/w:pBdr",formatting.NS)
+            if border is not None:
+                border.getparent().remove(border)
+    doc.styles["Normal"].paragraph_format.line_spacing=1.5
     if req.title.strip():
         doc.add_paragraph(req.title.strip(),style="Title")
     for line in req.text.splitlines():
