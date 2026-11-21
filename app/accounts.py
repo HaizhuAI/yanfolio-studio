@@ -55,10 +55,12 @@ def admin(req):
     return user
 
 
-def start_session(c,uid,response):
+def start_session(c,uid,response,req):
     token=s.opaque()
     c.execute("DELETE FROM sessions WHERE expires<=?",(s.now(),))
     c.execute("INSERT INTO sessions VALUES(?,?,?)",(s.digest(token),uid,s.now()+7*86400))
+    from .cloud import device
+    device(c,s.digest(token),req)
     response.set_cookie(COOKIE,token,max_age=7*86400,httponly=True,secure=s.public_origin().startswith("https://"),samesite="lax",path="/")
 
 
@@ -154,7 +156,7 @@ def register(body:Verify,req:Request,response:Response):
         if c.execute("SELECT 1 FROM users WHERE email=?",(addr,)).fetchone():
             raise HTTPException(409,"该邮箱已注册。")
         uid=c.execute("INSERT INTO users(email,password,created) VALUES(?,?,?)",(addr,s.password_hash(body.password),s.now())).lastrowid
-        start_session(c,uid,response)
+        start_session(c,uid,response,req)
         return s.public_user(c.execute("SELECT * FROM users WHERE id=?",(uid,)).fetchone())
 
 
@@ -172,7 +174,7 @@ def login(body:Credentials,req:Request,response:Response):
         fresh=c.execute("SELECT * FROM users WHERE id=? AND password=? AND active=1",(row["id"],row["password"])).fetchone()
         if not fresh:
             raise HTTPException(401,"账号状态已变更，请重新登录。")
-        start_session(c,row["id"],response)
+        start_session(c,row["id"],response,req)
     return s.public_user(row)
 
 

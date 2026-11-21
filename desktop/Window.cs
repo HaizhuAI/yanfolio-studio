@@ -17,7 +17,9 @@ internal sealed class Workspace : Form {
         Text="砚稿 Yanfolio"; Width=1350; Height=900; MinimumSize=new Size(760,540);
         StartPosition=FormStartPosition.CenterScreen;
         var menu=new MenuStrip();
-        menu.Items.Add("写作工作台",null,(s,e)=>Go("/"));
+        menu.Items.Add("写作工作台",null,(s,e)=>Go("/studio"));
+        menu.Items.Add("我的文档",null,(s,e)=>Go("/drive.html"));
+        menu.Items.Add("个人中心",null,(s,e)=>Go("/profile.html"));
         menu.Items.Add("点数钱包",null,(s,e)=>Go("/wallet.html"));
         menu.Items.Add("连接服务器",null,(s,e)=>Configure());
         status.Dock=DockStyle.Bottom; status.Height=23; status.Padding=new Padding(7,2,0,0);
@@ -29,6 +31,7 @@ internal sealed class Workspace : Form {
                 endpoint=File.Exists(ConfigFile) && Valid(File.ReadAllText(ConfigFile).Trim(),out stored)?stored:new Uri(BuildConfig.ServiceUrl);
                 var env=await CoreWebView2Environment.CreateAsync(null,profile);
                 await view.EnsureCoreWebView2Async(env);
+                view.CoreWebView2.Settings.UserAgent += " YanfolioDesktop/2.1";
                 view.CoreWebView2.Settings.AreHostObjectsAllowed=false;
                 view.CoreWebView2.Settings.IsWebMessageEnabled=false;
                 view.CoreWebView2.NavigationStarting+=(s,e)=>{
@@ -40,7 +43,7 @@ internal sealed class Workspace : Form {
                 };
                 view.CoreWebView2.NewWindowRequested+=(s,e)=>{e.Handled=true;Uri next;if(Uri.TryCreate(e.Uri,UriKind.Absolute,out next)) OpenExternal(next);};
                 view.CoreWebView2.NavigationCompleted+=(s,e)=>{status.Text=e.IsSuccess?"已连接   "+endpoint.Authority:"连接失败。请确认服务已启动，或使用“连接服务器”填写运营方地址。";};
-                Go("/");
+                Go("/profile.html");
             } catch(Exception ex){status.Text="桌面运行环境未就绪"; MessageBox.Show("请安装 Microsoft Edge WebView2 Evergreen Runtime 后重试。\n"+ex.Message,Text);}
         };
     }
@@ -63,7 +66,7 @@ internal sealed class Workspace : Form {
             dialog.Controls.AddRange(new Control[]{label,box,save});dialog.AcceptButton=save;
             if(dialog.ShowDialog(this)!=DialogResult.OK)return;
             Uri next;if(!Valid(box.Text.Trim(),out next)){MessageBox.Show("请输入有效的 HTTPS 服务根地址。",Text);return;}
-            endpoint=next;Directory.CreateDirectory(profile);File.WriteAllText(ConfigFile,endpoint.AbsoluteUri);Go("/");
+            endpoint=next;Directory.CreateDirectory(profile);File.WriteAllText(ConfigFile,endpoint.AbsoluteUri);Go("/profile.html");
         }
     }
     [STAThread] static void Main(){Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);Application.Run(new Workspace());}

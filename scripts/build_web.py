@@ -14,6 +14,7 @@ def build():
     inputs.extend(sorted((ROOT/"app").glob("*.py")))
     for suffix in ("*.html","*.js","*.css"):
         inputs.extend(sorted((ROOT/"app/static").glob(suffix)))
+    inputs.append(ROOT/"app/static/yanfolio-field.webp")
     if (output/"Yanfolio.exe").is_file():
         inputs.append(output/"Yanfolio.exe")
     target=output/"Yanfolio-Web.zip"

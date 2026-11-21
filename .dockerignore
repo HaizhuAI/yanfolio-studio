@@ -10,4 +10,4 @@
 !scripts/create_admin.py
 !deploy/
 !deploy/Dockerfile
-
+!app/static/yanfolio-field.webp

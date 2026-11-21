@@ -25,3 +25,4 @@
 !/deploy/Dockerfile
 !/deploy/Caddyfile
 !/deploy/compose.yaml
+!/app/static/yanfolio-field.webp

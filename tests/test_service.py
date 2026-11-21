@@ -14,7 +14,8 @@ def test_verified_registration_and_recovery():
     addr="reader@example.org"
     payload={"email":addr,"password":"long-example-pass"}
     assert cli.get("/api/search?q=test").status_code==401
-    assert cli.get("/",follow_redirects=False).headers["location"]=="/login.html"
+    assert cli.get("/").status_code==200
+    assert cli.get("/studio",follow_redirects=False).headers["location"]=="/login.html?next=/studio"
     assert cli.post("/api/auth/register",json={**payload,"code":"00000000"}).status_code==400
     def code(purpose):
         response=cli.post("/api/auth/code",json={"email":addr,"purpose":purpose})

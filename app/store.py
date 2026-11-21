@@ -110,7 +110,9 @@ def init():
     Fernet(key())
     with db() as c:
         c.execute("PRAGMA journal_mode=WAL")
-        c.executescript(SCHEMA)
+        from . import cloud_store
+        c.executescript(SCHEMA + cloud_store.SCHEMA)
+        cloud_store.objects().mkdir(parents=True,exist_ok=True,mode=0o700)
     with db(True) as c:
         if not c.execute("SELECT 1 FROM models").fetchone():
             base=os.getenv("YANFOLIO_AI_BASE_URL","http://127.0.0.1:18769/v1").rstrip("/")
