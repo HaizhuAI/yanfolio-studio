@@ -87,3 +87,22 @@ def test_appearance_persists_by_account_and_asset_access():
     r=new_client().get("/fonts/noto-sans-sc.woff2?v=06bfe0d6")
     assert r.content[:4]==b"wOF2" and "immutable" in r.headers["cache-control"]
 
+
+def test_import_external_text_and_report_overflow():
+    cli=seed()
+    ppt=Presentation()
+    slide=ppt.slides.add_slide(ppt.slide_layouts[1])
+    slide.shapes.title.text="现有汇报"
+    slide.placeholders[1].text="研究范围与采样说明"
+    slide.notes_slide.notes_text_frame.text="演讲者的补充说明"
+    data=BytesIO()
+    ppt.save(data)
+    r=cli.post("/api/slides/import?template=bricks-talk",files={"presentation":("old.pptx",data.getvalue())})
+    assert r.status_code==200
+    content=r.json()["slides"][0]
+    assert (content["title"],content["body"],content["notes"])==("现有汇报","研究范围与采样说明","演讲者的补充说明")
+    dense={"layout":"content","title":"过密内容","body":"\n".join(["完整段落"]*70)}
+    p=cli.post("/api/slides/preview",json={"template":"gaia-seminar","title":"汇报","slide":dense,"number":1,"total":1})
+    assert p.json()["overflow"]
+    assert cli.post("/api/slides/export",json={"title":"汇报","template":"gaia-seminar","slides":[dense]}).status_code==422
+
