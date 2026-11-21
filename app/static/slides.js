@@ -1,6 +1,7 @@
 "use strict";
 (async()=>{
  const $=id=>document.getElementById(id),el=YF.el, api=YF.api;
+ let dragSource=null;
  let active=null,page=0,known=[],themes=[],sources=[],models=[],pendingQuote=null,creating=false,sourceRefs=[];
  const previewCache=new Map();let observer=null;
  let previewSeq=0,saveTimer,previewTimer,saving=null,saved="",conflict=false;
@@ -85,7 +86,14 @@
    $("page-list").replaceChildren(...active.deck.slides.map((slide,i)=>{
      const b=button("",()=>{page=i;draw();},"slide-row");b.dataset.index=i;b.setAttribute("aria-current",i===page?"page":"false");
      const img=el("img");img.alt="";const label=el("div",undefined,"slide-row-label");label.append(el("span",String(i+1)),el("strong",slide.title||names[slide.layout]));
-     b.append(img,label);observer.observe(b);return b;
+     b.append(img,label);b.draggable=true;
+     b.ondragstart=e=>{dragSource={doc:active.id,slide};e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",String(i+1));};
+     b.ondragover=e=>{if(dragSource?.doc===active.id){e.preventDefault();e.dataTransfer.dropEffect="move";b.classList.add("drop-target");}};
+     b.ondragleave=()=>b.classList.remove("drop-target");
+     b.ondragend=()=>{dragSource=null;document.querySelectorAll(".drop-target").forEach(x=>x.classList.remove("drop-target"));};
+     b.ondrop=e=>{if(dragSource?.doc!==active.id)return;e.preventDefault();const from=active.deck.slides.indexOf(dragSource.slide);dragSource=null;
+      if(from>=0&&from!==i){const moved=active.deck.slides.splice(from,1)[0];active.deck.slides.splice(i,0,moved);page=i;changed();draw();}else b.classList.remove("drop-target");};
+     observer.observe(b);return b;
    }));
    const n=active.deck.slides.length;$("page-number").textContent=(page+1)+" / "+n+" · "+names[current().layout];$("show-count").textContent=(page+1)+" / "+n;
    for(const id of ["prev-page","show-prev","up"])$(id).disabled=page===0;

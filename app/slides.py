@@ -10,6 +10,7 @@ from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFil
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, ValidationError
 from pptx import Presentation
+from pptx.exc import PythonPptxError
 from starlette.concurrency import run_in_threadpool
 
 from . import deck_render as render,store as s
@@ -149,7 +150,7 @@ def _import(raw,filename,theme):
         slides=[]
         for i,page in enumerate(prs.slides):
             layout=page._element.cSld.get("name","").removeprefix("Yanfolio:")
-            notes=page.notes_slide.notes_text_frame.text if page.has_notes_slide and page.notes_slide.notes_text_frame else ""
+            notes=page.notes_slide.notes_text_frame.text.replace("\v","\n") if page.has_notes_slide and page.notes_slide.notes_text_frame else ""
             named=[sh.name for sh in page.shapes if sh.has_text_frame and sh.text.strip()]
             if native and layout in render.LAYOUTS and set(named)<=render.SLOTS and len(named)==len(set(named)):
                 fields={sh.name:"\n".join("".join(run.text for run in p.runs) for p in sh.text_frame.paragraphs)
@@ -158,14 +159,14 @@ def _import(raw,filename,theme):
             else:
                 boxes=[sh.text.strip().replace("\v"," ") for sh in page.shapes if sh.has_text_frame and sh.text.strip()]
                 heading=page.shapes.title
-                title=heading.text.strip() if heading is not None and heading.text.strip() else (boxes[0] if boxes else f"第 {i+1} 页")
+                title=heading.text.strip().replace("\v"," ") if heading is not None and heading.text.strip() else (boxes[0] if boxes else f"第 {i+1} 页")
                 if title in boxes:
                     boxes.remove(title)
                 slides.append(Slide(layout="content",title=title,body="\n".join(boxes),notes=notes))
         return Deck(title=(prs.core_properties.title or Path(filename).stem)[:120],template=theme,slides=slides)
     except ValidationError as exc:
         raise ValueError("原页文字超过可编辑页的容量，请先在 PowerPoint 中拆分过密的页面。") from exc
-    except (BadZipFile,KeyError,AttributeError,IndexError,TypeError,RuntimeError,XMLSyntaxError) as exc:
+    except (BadZipFile,KeyError,AttributeError,IndexError,TypeError,RuntimeError,XMLSyntaxError,PythonPptxError) as exc:
         raise ValueError("无法读取该 PPTX，请另存为标准 PowerPoint 演示文稿后再试。") from exc
 
 
