@@ -321,9 +321,34 @@ def set_values(parent, data, order):
         item.set(tag(key), value)
 
 
+def describe(props):
+    labels = {"left":"左对齐","right":"右对齐","center":"居中","both":"两端对齐","distribute":"分散对齐"}
+    values = list(dict.fromkeys(props[key] for key in (("rFonts","eastAsia"),("rFonts","ascii"),("rFonts","hAnsi")) if key in props))
+    def number(key, factor, suffix):
+        raw = props.get(key,"")
+        if re.fullmatch(r"-?\d{1,8}",raw):
+            return f"{int(raw)/factor:g}{suffix}"
+    for key, factor, suffix, prefix in ((("sz","val"),2," pt",""),(("spacing","before"),20," pt","段前 "),
+                                        (("spacing","after"),20," pt","段后 "),(("ind","firstLineChars"),100," 字符","首行缩进 ")):
+        formatted = number(key,factor,suffix)
+        if formatted:
+            values.append(prefix+formatted)
+    line_rule = props.get(("spacing","lineRule"),"auto")
+    line = number(("spacing","line"),240 if line_rule=="auto" else 20," 倍" if line_rule=="auto" else " pt")
+    if line:
+        values.append("行距 "+line)
+    if ("jc","val") in props:
+        align = props["jc","val"]
+        values.append(labels.get(align,align))
+    if props.get(("b","val")) in ("true","1","on"):
+        values.append("加粗")
+    return "、".join(values)
+
+
 def process(original, template, instructions, preview):
     pkg = Package(original)
     profile, page, nsect = template_profile(Package(template)) if template else ({}, {}, 0)
+    template_roles = [ROLES[k] for k,props in profile.items() if props]
     explicit, page_rules, applied, pending = rules(instructions)
     for name, props in explicit.items():
         profile.setdefault(name, {}).update(props)
@@ -351,7 +376,8 @@ def process(original, template, instructions, preview):
     if nsect > 1:
         warnings.append("模板含多个节，页面尺寸与边距取自模板末节，应用到原稿各节。")
     summary = {"paragraphs":dict(counts),"sections":len(sections) if page else 0,"recognized":applied,"pending":pending,"warnings":warnings,
-               "template_roles":[ROLES[k] for k in profile if profile[k]] if template else [],
+               "template_roles":template_roles,
+               "effective":[f"{ROLES[k]} · {describe(props)}" for k,props in profile.items() if describe(props) and counts[ROLES[k]]],
                "changed":bool(counts or (page and sections))}
     return summary, None if preview else pkg.save()
 
