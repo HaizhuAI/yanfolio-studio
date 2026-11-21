@@ -28,7 +28,7 @@ const names = {write:"论文创作",search:"文献检索",format:"格式工作�
 let mode="polish", ticket=0, proposal=null, past=null, formatVersion=0, validFormat=false, liveItems=[];
 let timer;
 function notice(msg) { $("notice").textContent=msg; $("notice").hidden=false; clearTimeout(timer); timer=setTimeout(()=>$("notice").hidden=true,6500); }
-function saveState(label){$("save-state").lastChild.textContent=label;}
+function saveState(label){const el=$("save-state");if(el.lastChild.textContent!==label){el.lastChild.textContent=label;el.dataset.state=label;}}
 function showConflict(){conflict=true;saveState("有版本冲突");$("recovery").hidden=false;$("recovery-msg").textContent="另一客户端已更新。可将本机改动合并为独立副本。";}
 async function flush(){
  if(saving||conflict)return;
@@ -74,6 +74,7 @@ function manuscripts() {
 function meta() { $("wordcount").textContent=Array.from(doc().text.replace(/\s/g,"")).length.toLocaleString()+" 字"; }
 function clearSuggestion() { proposal=null; $("suggestion").hidden=true; }
 function selectDoc(id) {
+  document.querySelector(".assistant").removeAttribute("aria-busy");
   state.active=id; $("quote-box").hidden=true; ++ticket; clearSuggestion(); past=null; $("undo").disabled=true; $("generate").disabled=false; $("generate").lastChild.textContent="生成建议";
   $("doc-title").value=doc().title; $("body").value=doc().text; $("paper-id").textContent=doc().example?"示例手稿":"个人手稿";meta();manuscripts();library();save();
 }
@@ -142,21 +143,21 @@ $("generate").onclick=async()=>{
  try{const q=await YF.api("/api/write/quote","POST",input);if(ticket!==id)return;
   walletBalance(q.balance);prepared={id,snapshot,input,request_id:crypto.randomUUID(),quote:q.quote};
   $("quote-detail").textContent=q.label+" · "+q.expert+" · "+q.passes+" 次调用。最多扣 "+q.maximum+" 点，余额 "+q.balance+" 点。";
-  $("confirm-run").disabled=q.balance<q.maximum;$("quote-box").hidden=false;
+  $("confirm-run").disabled=q.balance<q.maximum;$("quote-box").hidden=false;YanUI.enter($("quote-box"));
  }catch(e){notice(e.message);}finally{if(ticket===id)btn.disabled=false;}
 };
 $("cancel-run").onclick=()=>{prepared=null;$("quote-box").hidden=true;};
 $("confirm-run").onclick=async()=>{
  const p=prepared;if(!p)return;
  if(p.snapshot.docId!==doc().id||JSON.stringify(p.input)!==JSON.stringify(writingInput())){prepared=null;$("quote-box").hidden=true;notice("输入已变化，请重新获取报价。");return;}
- const btn=$("generate");btn.disabled=true;$("confirm-run").disabled=true;btn.lastChild.textContent="正在生成…";
+ const btn=$("generate");btn.disabled=true;$("confirm-run").disabled=true;btn.lastChild.textContent="正在生成…";document.querySelector(".assistant").setAttribute("aria-busy","true");
  try{const result=await YF.api("/api/write","POST",{...p.input,quote:p.quote,request_id:p.request_id});if(p.id!==ticket)return;
   walletBalance(result.balance);proposal={...p.snapshot,text:result.suggestion};$("suggest-text").textContent=result.suggestion;
   if(result.unlinked_citations?.length)$("suggest-text").prepend(make("p","请核对未关联的引文 "+result.unlinked_citations.join("、"),"citation-note"));
   if(result.new_percentages?.length)$("suggest-text").prepend(make("p","需核对新增百分数 "+result.new_percentages.join("、"),"citation-note"));
   $("model-info").textContent=result.expert+" · 已完成 "+result.passes+" 次调用，本次实收 "+result.charged+" 点。";
-  $("accept").textContent=p.snapshot.mode==="polish"?(p.snapshot.start===p.snapshot.end?"替换正文":"替换选区"):"追加到正文";$("suggestion").hidden=false;$("quote-box").hidden=true;prepared=null;
- }catch(e){notice(e.message);if(e.status){prepared=null;$("quote-box").hidden=true;}}finally{if(ticket===p.id){btn.disabled=false;$("confirm-run").disabled=false;btn.lastChild.textContent="生成建议";}}
+  $("accept").textContent=p.snapshot.mode==="polish"?(p.snapshot.start===p.snapshot.end?"替换正文":"替换选区"):"追加到正文";$("suggestion").hidden=false;YanUI.enter($("suggestion"));$("quote-box").hidden=true;prepared=null;
+ }catch(e){notice(e.message);if(e.status){prepared=null;$("quote-box").hidden=true;}}finally{if(ticket===p.id){document.querySelector(".assistant").removeAttribute("aria-busy");btn.disabled=false;$("confirm-run").disabled=false;btn.lastChild.textContent="生成建议";}}
 };
 $("discard").onclick=clearSuggestion;
 $("accept").onclick=()=>{

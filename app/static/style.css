@@ -12,3 +12,7 @@
 
 
 #body{field-sizing:content;max-height:75vh}.focus-writing #body{max-height:83vh}
+
+.assistant{position:relative;overflow:hidden}.assistant[aria-busy=true]::before{content:"";position:absolute;top:0;left:0;width:40%;height:2px;background:#7869d9;animation:working 1.3s ease-in-out infinite}.saved{min-inline-size:6.3em;justify-content:flex-end}.saved[data-state="待同步"] .icon,.saved[data-state="同步中"] .icon{color:#8b789f}.saved[data-state="有版本冲突"]{color:#875124}
+@keyframes working{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
+@media(prefers-reduced-motion:reduce){.assistant[aria-busy=true]::before{width:100%;animation:none}}
