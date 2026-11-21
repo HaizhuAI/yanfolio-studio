@@ -4,21 +4,6 @@ const user=await YF.api("/api/me");YF.account=user.id;
 const [remote,catalog]=await Promise.all([YF.api("/api/workspace"),YF.api("/api/catalog")]);
 const $ = id => document.getElementById(id);
 const make = (tag, text, cls) => { const el = document.createElement(tag); if (text !== undefined) el.textContent = text; if (cls) el.className = cls; return el; };
-const paths = {
-  plus:"M12 5v14M5 12h14", pen:"m4 20 4.2-1 12-12-3.2-3.2-12 12L4 20Zm10.5-13.5 3 3", search:"M20 20l-4.5-4.5 M17 10.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0",
-  layout:"M3 4h18v16H3z M3 9h18 M9 9v11", drive:"M3 13l3-8h12l3 8v6H3z M3 13h18 M16 16h2",
-  check:"m4 12 5 5L20 6",download:"M12 3v12m-5-5 5 5 5-5 M4 16v4h16v-4",file:"M6 3h8l4 4v14H6z M14 3v5h4",
-  align:"M4 5h16M4 10h12M4 15h16M4 20h10",undo:"m8 4-5 5 5 5 M3 9h11a6 6 0 0 1 0 12",
-  spark:"m10 3 1.7 5.3L17 10l-5.3 1.7L10 17l-1.7-5.3L3 10l5.3-1.7L10 3Zm8 11 1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z",
-  bookmark:"M6 3h12v18l-6-4-6 4z",books:"M3 5h4v14H3z M9 5h4v14H9z M15 6l3-1 4 13-3 1z",
-  checklist:"M9 6h11M9 12h11M9 18h11 M3 6l1 1 2-3 M3 12l1 1 2-3 M3 18l1 1 2-3"
-};
-document.querySelectorAll("[data-icon]").forEach(el => {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
-  const path = document.createElementNS(svg.namespaceURI,"path");
-  svg.setAttribute("viewBox","0 0 24 24"); svg.setAttribute("class","icon"); svg.setAttribute("aria-hidden","true");
-  path.setAttribute("d",paths[el.dataset.icon]); svg.append(path); el.replaceWith(svg);
-});
 const storageKey="yanfolio.pending."+user.id+"."+user.email;
 const legacyKey="yanfolio.workspace.v1";
 let version=remote.version, synced=JSON.stringify(remote.content), saving=false, conflict=false, saveTimer;
@@ -65,9 +50,20 @@ $("merge").onclick=async()=>{try{const fresh=await YF.api("/api/workspace");stat
 $("legacy").hidden=!localStorage.getItem(legacyKey)||!!localStorage.getItem(storageKey+".imported");$("legacy").onclick=()=>{if(!confirm("将此浏览器旧版手稿复制到当前邮箱账号？"))return;try{state=combine(state,JSON.parse(localStorage.getItem(legacyKey)));selectDoc(state.active);localStorage.setItem(storageKey+".imported","1");$("legacy").hidden=true;}catch(e){notice(e.message);}};
 $("logout").onclick=async()=>{clearTimeout(saveTimer);await flush();await YF.logout();};
 window.addEventListener("online",flush);
+function setFocus(active){
+ document.body.classList.toggle("focus-writing",active);$("focus-writing").setAttribute("aria-pressed",active);
+ $("focus-writing").querySelector("span").textContent=active?"退出专注":"专注写作";
+ if(active)$("body").focus({preventScroll:true});
+}
+$("focus-writing").onclick=()=>setFocus(!document.body.classList.contains("focus-writing"));
+document.addEventListener("keydown",e=>{
+ if(e.key==="Escape"&&document.body.classList.contains("focus-writing"))setFocus(false);
+ if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.code==="KeyF"&&!$("view-write").hidden){e.preventDefault();$("focus-writing").click();}
+});
 function show(view) {
   Object.keys(names).forEach(v=>$("view-"+v).hidden=v!==view);
   document.querySelectorAll("nav [data-view]").forEach(b=>{b.classList.toggle("active",b.dataset.view===view);b.setAttribute("aria-current",b.dataset.view===view?"page":"false");});
+  if(view!=="write")setFocus(false);YanUI.enter($("view-"+view));
   $("breadcrumb").textContent=names[view]; if (view==="search") $("query").focus();
 }
 document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>show(b.dataset.view));
