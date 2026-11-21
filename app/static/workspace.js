@@ -115,6 +115,7 @@ $("generate").onclick=async()=>{
     const response=await request("/api/write",post({...d,action:mode,selection:d.text.slice(start,end),instruction:$("prompt").value}));
     const result=await response.json(); if(id!==ticket) return;
     proposal={...snapshot,text:result.suggestion};$("suggest-text").textContent=result.suggestion;
+    if(result.unlinked_citations?.length) $("suggest-text").prepend(make("p","以下新增引文编号未关联本文题录，请先核对："+result.unlinked_citations.map(n=>"["+n+"]").join("、"),"citation-note"));
     $("accept").textContent=snapshot.mode==="polish"?(start===end?"替换正文":"替换选区"):"追加到正文";$("suggestion").hidden=false;
   }catch(e){if(id===ticket)notice(e.message);}finally{if(id===ticket){btn.disabled=false;btn.lastChild.textContent="生成建议";}}
 };
@@ -167,7 +168,7 @@ formatForm.onsubmit=async e=>{
     if(version!==formatVersion)return;
     $("report").replaceChildren(make("p",data.changed?"已找到可套用的格式。":"尚未找到可自动套用的格式。"));
     reportList("匹配范围",[...Object.entries(data.paragraphs).map(([k,n])=>k+" · "+n+" 段"),...(data.sections?["页面设置 · "+data.sections+" 节"]:[])]);
-    reportList("模板中提取的样式",data.template_roles);reportList("识别到的文字要求",data.recognized);reportList("待人工确认",data.pending);reportList("分节说明",data.warnings);
+    reportList("模板中提取的样式",data.template_roles);reportList("识别到的文字要求",data.recognized);reportList("最终段落格式",data.effective||[]);reportList("待人工确认",data.pending);reportList("分节说明",data.warnings);
     validFormat=data.changed;$("apply-format").disabled=!validFormat;
   }catch(err){if(version===formatVersion)$("report").textContent=err.message;}finally{$("preview").disabled=false;}
 };

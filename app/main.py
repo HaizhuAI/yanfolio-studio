@@ -117,7 +117,10 @@ async def write(req: WritingRequest):
             raise ValueError
     except (httpx.HTTPError,ValueError,KeyError,IndexError,TypeError) as exc:
         raise HTTPException(502,"模型未返回有效文本。请检查本机模型连接或稍后重试，原稿已保留。") from exc
-    return {"suggestion":result.strip(),"model":model}
+    existing = set(re.findall(r"\[(\d{1,5})\]",excerpt))
+    unlinked = sorted({int(n) for n in re.findall(r"\[(\d{1,5})\]",result)
+                       if n not in existing and not 1<=int(n)<=len(req.references)})
+    return {"suggestion":result.strip(),"model":model,"unlinked_citations":unlinked}
 
 
 async def read_file(file, allowed, limit=FILES_MAX):
