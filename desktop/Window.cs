@@ -84,8 +84,11 @@ internal sealed class Workspace : Form {
         AddRoute(routes,"文档","我的云文档","folder","/drive.html","Ctrl+2");
         AddRoute(routes,"账号","个人中心","profile","/profile.html","Ctrl+3");
         AddRoute(routes,"点数","点数钱包","wallet","/wallet.html","Ctrl+4");
-        var bottom=new FlowLayoutPanel(){Name="bottom",Dock=DockStyle.Bottom,Height=70,BackColor=Night};connection=new RailButton("连接","连接服务器","server");
-        connection.Click+=(s,e)=>Configure();bottom.Controls.Add(connection);tips.SetToolTip(connection,"连接运营方服务器");
+        var bottom=new FlowLayoutPanel(){Name="bottom",Dock=DockStyle.Bottom,Height=70,BackColor=Night};connection=new RailButton("设置","应用设置","server");
+        var settingsMenu=new ContextMenuStrip();
+        settingsMenu.Items.Add("外观与字体",null,(s,e)=>{if(view.CoreWebView2!=null)view.CoreWebView2.ExecuteScriptAsync("window.YanfolioAppearance?.open?.()");});
+        settingsMenu.Items.Add("连接服务器",null,(s,e)=>Configure());
+        connection.Click+=(s,e)=>settingsMenu.Show(connection,new Point(connection.Width,0));bottom.Controls.Add(connection);tips.SetToolTip(connection,"外观、字体与服务连接");
         rail.Controls.Add(routes);rail.Controls.Add(top);rail.Controls.Add(bottom);
         content.Dock=DockStyle.Fill;view.Dock=DockStyle.Fill;view.DefaultBackgroundColor=Color.FromArgb(246,246,251);
         errorBar.Dock=DockStyle.Bottom;errorBar.Height=44;errorBar.BackColor=Color.FromArgb(244,240,251);errorBar.Visible=false;

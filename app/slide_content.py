@@ -35,17 +35,18 @@ class Deck(BaseModel):
 
 
 def outline_schema(count):
-    page={"type":"object","properties":{"title":{"type":"string"},"points":{"type":"array","minItems":1,"maxItems":3,"items":{"type":"string"}}},
-          "required":["title","points"],"additionalProperties":False}
-    return {"type":"object","properties":{"pages":{"type":"array","minItems":count,"maxItems":count,"items":page}},
-            "required":["pages"],"additionalProperties":False}
+    fields={name+str(i):{"type":"string"} for i in range(1,count+1) for name in ("t","p")}
+    return {"type":"object","properties":fields,"required":list(fields),"additionalProperties":False}
 
 
 def parse_outline(raw,count):
     cleaned=re.sub(r"^['\x60]{3}(?:json)?\s*|\s*['\x60]{3}$","",raw.strip(),flags=re.I)
     try:
         data=json.loads(cleaned)
-        rows=data.get("pages") if isinstance(data,dict) else data
+        if isinstance(data,dict) and set(data)==set(outline_schema(count)["properties"]) and all(isinstance(v,str) for v in data.values()):
+            rows=[{"title":data[f"t{i}"],"points":data[f"p{i}"].splitlines()} for i in range(1,count+1)]
+        else:
+            rows=data.get("pages") if isinstance(data,dict) else data
     except json.JSONDecodeError:
         rows=[re.sub(r"^\s*(?:\d+[.、)]\s*|[-*]\s+)","",x).strip() for x in cleaned.splitlines() if "|" in x or "｜" in x]
     if not isinstance(rows,list) or len(rows)!=count:

@@ -30,7 +30,7 @@
    const obj=active;
    saving=(async()=>{
      while(obj===active&&!conflict){
-       const snap=JSON.stringify(obj.deck);if(snap===saved)break;
+       const snap=JSON.stringify(obj.deck);if(snap===saved){localStorage.removeItem(localKey(obj.id));syncLabel("已同步");break;}
        syncLabel("同步中");
        try{const r=await api("/api/slides/drafts/"+obj.id,"PUT",{version:obj.version,deck:JSON.parse(snap)});
          obj.version=r.version;saved=snap;

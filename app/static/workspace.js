@@ -61,7 +61,7 @@ $("close-inspector").onclick=()=>{inspector(false);$("assistant-toggle").focus()
 $("selection-ai").onclick=()=>{inspector(true);$("prompt").focus({preventScroll:true});};$("citation-dock").onclick=()=>inspector(true,"library");
 function rail(open){document.body.classList.toggle("rail-closed",!open);$("rail-toggle").setAttribute("aria-expanded",open);}
 rail(!matchMedia("(max-width:760px)").matches);$("rail-toggle").onclick=()=>rail(document.body.classList.contains("rail-closed"));
-$("to-slides").onclick=()=>{const d=doc();try{sessionStorage.setItem("yanfolio.to-slides."+user.id,JSON.stringify({id:d.id,title:d.title,text:d.text.slice(0,20000),references:d.references}));}catch{}location.assign("/slides?from=manuscript");};
+$("to-slides").onclick=()=>{const d=doc();try{sessionStorage.setItem("yanfolio.to-slides."+user.id,JSON.stringify({id:d.id,title:d.title,text:d.text,references:d.references}));}catch{}location.assign("/slides?from=manuscript");};
 document.querySelectorAll(".tools-menu button").forEach(b=>b.addEventListener("click",()=>{b.closest("details").open=false;}));
 function setFocus(active){
  document.body.classList.toggle("focus-writing",active);$("focus-writing").setAttribute("aria-pressed",active);

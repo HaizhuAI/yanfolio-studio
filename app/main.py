@@ -85,7 +85,10 @@ async def access(request, call_next):
         if request.headers.get("x-yanfolio-request")!="1":
             return JSONResponse({"detail":"缺少客户端请求标记。"},403)
         try:
-            length=int(request.headers["content-length"])
+            if request.method=="DELETE" and "content-length" not in request.headers and "transfer-encoding" not in request.headers:
+                length=0
+            else:
+                length=int(request.headers["content-length"])
         except (KeyError,ValueError):
             return JSONResponse({"detail":"需要指定上传大小。"},411)
         if not 0<=length<=40*1024*1024:

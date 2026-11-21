@@ -22,7 +22,7 @@
  window.addEventListener("storage",e=>{if(e.key!==key||dialog?.open)return;const value=cached();if(uid!==null&&value.uid!==uid)return;saved=clean(value);apply(saved);});
  function start(){
    const authPage=!!document.querySelector(".shell,.business,.deck-app");
-   const host=document.querySelector(".sidebar-foot,.account-nav,.deck-utilities,.auth-card footer");
+   const host=document.querySelector(".sidebar-foot,.account-nav,.deck-utilities,.auth-card footer,.foot");
    if(!host)return;
    let ready=Promise.resolve();
    if(authPage)ready=fetch("/api/preferences").then(async r=>{if(!r.ok)throw Error();const v=await r.json();uid=v.uid;remember(v);if(!dialog?.open)apply(saved);}).catch(()=>{});
@@ -44,6 +44,7 @@
    dialog.append(h,form);document.body.append(dialog);
    function paint(){modeButtons.forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===shown.mode));for(const prop of ["ui_font","reading_font","reading_size"])form.elements[prop].value=String(shown[prop]);}
    openButton.onclick=async()=>{await ready;apply(saved);status.textContent="";paint();dialog.showModal();modeButtons.find(b=>b.dataset.mode===shown.mode)?.focus();};
+   window.YanfolioAppearance={open:openButton.onclick};
    form.onsubmit=async e=>{e.preventDefault();save.disabled=true;cancel.disabled=true;try{let data=shown;
     if(authPage){const opt={method:"PUT",headers:{"X-Yanfolio-Request":"1","Content-Type":"application/json"},body:JSON.stringify(data)};
       if(uid!==null)opt.headers["X-Yanfolio-Account"]=String(uid);const r=await fetch("/api/preferences",opt);if(!r.ok)throw Error("保存失败，请检查登录和网络。");data=await r.json();uid=data.uid;}
