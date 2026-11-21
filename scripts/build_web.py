@@ -10,7 +10,7 @@ def build():
     output.mkdir(exist_ok=True)
     inputs=[ROOT/x for x in (".dockerignore","LICENSE","requirements.txt","README.md","docs/architecture.md",
                              "docs/references.md","docs/technology.md","deploy/Dockerfile","deploy/Caddyfile","deploy/compose.yaml",
-                             "scripts/create_admin.py")]
+                             "scripts/create_admin.py","scripts/cloud_backup.py","docs/cloud.md")]
     inputs.extend(sorted((ROOT/"app").glob("*.py")))
     for suffix in ("*.html","*.js","*.css"):
         inputs.extend(sorted((ROOT/"app/static").glob(suffix)))

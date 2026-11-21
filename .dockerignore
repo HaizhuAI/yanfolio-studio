@@ -11,3 +11,5 @@
 !deploy/
 !deploy/Dockerfile
 !app/static/yanfolio-field.webp
+
+!scripts/cloud_backup.py

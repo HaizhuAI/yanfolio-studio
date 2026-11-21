@@ -1,9 +1,9 @@
 FROM python:3.12-slim
 WORKDIR /srv/yanfolio
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && useradd --uid 10001 --create-home yanfolio && mkdir /data && chown yanfolio /data
+RUN pip install --no-cache-dir -r requirements.txt && useradd --uid 10001 --create-home yanfolio && mkdir -p /data /objects && chown yanfolio /data /objects
 COPY app ./app
-COPY scripts/create_admin.py ./scripts/create_admin.py
+COPY scripts/create_admin.py scripts/cloud_backup.py ./scripts/
 ENV YANFOLIO_DATA=/data
 USER yanfolio
 EXPOSE 8769
