@@ -35,7 +35,9 @@ class Deck(BaseModel):
 
 
 def outline_schema(count):
-    return {"type":"object","properties":{"pages":{"type":"array","minItems":count,"maxItems":count,"items":{"type":"string"}}},
+    page={"type":"object","properties":{"title":{"type":"string"},"points":{"type":"array","minItems":1,"maxItems":3,"items":{"type":"string"}}},
+          "required":["title","points"],"additionalProperties":False}
+    return {"type":"object","properties":{"pages":{"type":"array","minItems":count,"maxItems":count,"items":page}},
             "required":["pages"],"additionalProperties":False}
 
 
@@ -50,9 +52,14 @@ def parse_outline(raw,count):
         raise ValueError("模型未给出所选页数")
     output=[]
     for i,row in enumerate(rows):
-        if not isinstance(row,str):
+        if isinstance(row,dict) and isinstance(row.get("title"),str) and isinstance(row.get("points"),list) and all(isinstance(p,str) for p in row["points"]):
+            parts=[row["title"].strip(),*[p.strip() for p in row["points"] if p.strip()]]
+        elif isinstance(row,str):
+            parts=[x.strip() for x in re.split(r"[|｜]",row) if x.strip()]
+            if len(parts)==1:
+                parts=re.split(r"[：:]",parts[0],maxsplit=1)
+        else:
             raise ValueError("模型返回了无法编辑的内容")
-        parts=[x.strip() for x in re.split(r"[|｜]",row) if x.strip()]
         if len(parts)<2 or not parts[0] or len(parts[0])>90:
             raise ValueError("演示大纲缺少标题或要点")
         if i in (0,count-1):

@@ -86,8 +86,8 @@ def plan(req):
         if req.level=="peer":
             raise HTTPException(422,"演示初稿使用单次生成；请在编辑器中复核每页。")
         count=req.page_count
-        instruction=(f"请制作恰好 {count} 页中文学术演示。只返回一个 JSON 对象，键 pages，值是 {count} 个字符串。"
-            "每个字符串为 标题｜要点一｜要点二。封面与收束页只写 标题｜一句副标题。每段不超过 20 个汉字，"
+        instruction=(f"请制作恰好 {count} 页中文学术演示。只返回一个 JSON 对象，键 pages，值是 {count} 个页面对象。"
+            '每页格式为 {"title":"本页标题","points":["一个简短要点","另一个要点"]}。封面与收束页只写一个简短要点。每段不超过 20 个汉字，'
             "每页聚焦一个论点。可从研究问题、方法、证据局限、下一步组织。不要虚构已经完成的实验。")
         return expert,[{"role":"system","content":GUARD+"\n"+EXPERTS[expert][2]+"\n"+instruction},{"role":"user","content":data}]
     messages=[{"role":"system","content":"\n".join([GUARD,EXPERTS[expert][2],LEVELS[req.level][1],TASKS[req.action]])},
