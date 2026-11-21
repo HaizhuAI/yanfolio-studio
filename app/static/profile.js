@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id),fmt=YanfolioDrive.fmt;
 async function load(){
- const p=await YF.api("/api/profile");YF.account=p.id;$("person").textContent=p.profile.name||p.email.split("@")[0];$("avatar").textContent=Array.from($("person").textContent)[0];$("email").textContent=p.email;$("joined").textContent=(p.role==="admin"?"管理员账号":"研究者账号")+" · "+new Date(p.created*1000).toLocaleDateString("zh-CN")+" 注册";
+ const p=await YF.api("/api/profile");YF.account=p.id;$("admin-portal").hidden=p.role!=="admin";$("person").textContent=p.profile.name||p.email.split("@")[0];$("avatar").textContent=Array.from($("person").textContent)[0];$("email").textContent=p.email;$("joined").textContent=(p.role==="admin"?"管理员账号":"研究者账号")+" · "+new Date(p.created*1000).toLocaleDateString("zh-CN")+" 注册";
  for(const k of ["name","institution","discipline"])$(k).value=p.profile[k];
  $("used").textContent=fmt(p.storage.used);$("quota").textContent=fmt(p.storage.quota);$("balance").textContent=p.balance;$("meter").value=p.storage.quota?p.storage.used*100/p.storage.quota:0;
  $("counts").textContent=p.file_count+" 份文档 · 回收站 "+fmt(p.storage.trash)+" · 上传预留 "+fmt(p.storage.reserved);
