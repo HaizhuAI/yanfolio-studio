@@ -1,0 +1,73 @@
+{
+  "templates": [
+    {
+      "id": "academic-ribbon",
+      "name": "紫带答辩",
+      "description": "通栏标题与双栏证据框，适合开题和学位答辩。",
+      "file": "academic-ribbon.pptx",
+      "source": "Academic PPT Template",
+      "source_url": "https://github.com/yctrrr/academic-ppt-template/blob/ac7c64f0d02704f87e863b39cf977b209cc0ca83/assets/academic-template.pptx",
+      "license": "MIT",
+      "license_file": "LICENSE-academic.txt",
+      "colors": {
+        "background": "#FFFFFF",
+        "ink": "#262237",
+        "accent": "#7030A0",
+        "surface": "#F6F0FA"
+      },
+      "layouts": [
+        "cover",
+        "content",
+        "columns",
+        "closing"
+      ],
+      "thumbnail": "academic-ribbon-cover.webp"
+    },
+    {
+      "id": "gaia-seminar",
+      "name": "Gaia 研讨",
+      "description": "居中主旨页与暖白正文页，适合组会和研究汇报。",
+      "file": "gaia-seminar.pptx",
+      "source": "Marp Core · Gaia",
+      "source_url": "https://github.com/marp-team/marp-core/blob/01ef3a4ef0888403097e2c8f7988ea71c460cf97/themes/gaia.scss",
+      "license": "MIT",
+      "license_file": "LICENSE-marp.txt",
+      "colors": {
+        "background": "#FFF8E1",
+        "ink": "#374A53",
+        "accent": "#00699F",
+        "surface": "#ECEBD8"
+      },
+      "layouts": [
+        "cover",
+        "content",
+        "columns",
+        "closing"
+      ],
+      "thumbnail": "gaia-seminar-cover.webp"
+    },
+    {
+      "id": "bricks-talk",
+      "name": "几何讲堂",
+      "description": "模块化图形与衬线大标题，适合课程报告和跨学科讲座。",
+      "file": "bricks-talk.pptx",
+      "source": "Slidev · Bricks",
+      "source_url": "https://github.com/slidevjs/themes/tree/6bb2889af4c66c1fbab4c1beb2e8d962a3b55648/packages/theme-bricks",
+      "license": "MIT",
+      "license_file": "LICENSE-slidev.txt",
+      "colors": {
+        "background": "#FFFCF5",
+        "ink": "#22313C",
+        "accent": "#2C5988",
+        "surface": "#F9D56E"
+      },
+      "layouts": [
+        "cover",
+        "content",
+        "columns",
+        "closing"
+      ],
+      "thumbnail": "bricks-talk-cover.webp"
+    }
+  ]
+}
