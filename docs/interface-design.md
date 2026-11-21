@@ -5,7 +5,7 @@
 | 场景 | 从案例得到的设计取舍 |
 |---|---|
 | 官网主视觉 | Crest 把单一物体、反射面与光源组织成可辨认的空间。砚稿选用书页作主体，以银蓝边缘和层间阴影表达纸页起伏，标题放在稳定的暗部。该示例标为 Premium，商用许可随会员提供。[HorizonX · Crest Water Hero](https://horizonx.so/explore/crest-water-hero) |
-| 手稿演示 | Compare 用同一窗口展示两个版本，并提供拖动、悬停和自动播放。用于论文时，保留同一段文字和相同折行，让读者拖动分界、定位措辞差异。键盘方向键和触屏均应能完成比较。[Aceternity · Compare](https://ui.aceternity.com/components/compare) |
+| 手稿演示 | Compare 用同一窗口展示两个版本，并提供拖动、悬停和自动播放。用于论文时，在同一段原文上呈现两种排版，让读者拖动分界，比较字号、对齐与缩进。润色采用可采纳和撤销的逐句标记。键盘方向键和触屏均应能完成比较。[Aceternity · Compare](https://ui.aceternity.com/components/compare) |
 | 登录与状态反馈 | Bencho 的密码示例将可见性变化放在眼睛按钮旁。Transitions 的文字状态切换在原位置换入下一条消息。对应砚稿，短反馈放在正在操作的控件上；编辑器的同步状态留出固定宽度，避免更换几个字就推移整排操作。[Bencho · Password reveal](https://bencho.dev/blocks/pass-reveal) · [Transitions · Text states swap](https://transitions.dev/studio.html?lib=text-states-swap) |
 | 桌面导航与上传 | BoardUI 侧栏把常用导航、快捷动作与账户操作分层；上传示例同时考虑键盘选择、类型校验和进度。砚稿的桌面轨应始终标出当前页面，云文档的上传进度取自服务端确认的字节数，失败或暂停仍能看见文件名。[BoardUI · Sidebar](https://www.boardui.com/components/sidebar) · [File Upload](https://www.boardui.com/components/file-upload) |
 | 字形与数值 | Typewolf 收录的 Dirty Vine 同时使用 Swear 与 DM Mono。砚稿借用按信息用途分配字形的方法：标题以字号和字重建立层级，容量、点数、时间使用等宽数字，中文正文优先选择终端上可稳定显示的字形。[Typewolf · Dirty Vine](https://www.typewolf.com/site-of-the-day/dirty-vine) |

@@ -17,7 +17,9 @@
  $("compare").oninput=e=>compare(e.target.value);$("only-before").onclick=()=>compare(0);$("only-after").onclick=()=>compare(100);
  const descriptions=[["Word 原稿","导入正文或使用原件排版"],["PDF 文献","保存原件与不同版本"],["BibTeX 题录","按项目整理检索资料"]];
  const cards=[...document.querySelectorAll("[data-sheet]")];
+ let activeFile=0;
  function selectFile(active){
+   activeFile=active;
    cards.forEach(card=>{
      const i=(Number(card.dataset.sheet)-active+3)%3,target=[{x:0,y:-16,r:-3},{x:38,y:1,r:15},{x:-38,y:1,r:-16}][i];
      card.style.zIndex=String(4-i);
@@ -28,12 +30,21 @@
    document.querySelectorAll("[data-file]").forEach(b=>b.setAttribute("aria-pressed",Number(b.dataset.file)===active));
  }
  document.querySelectorAll("[data-file]").forEach(b=>b.onclick=()=>selectFile(Number(b.dataset.file)));
+ const stack=document.querySelector(".stack");let drag=null;
+ stack.addEventListener("pointerdown",e=>{if(e.button!==0||!e.isPrimary)return;drag={id:e.pointerId,x:e.clientX,y:e.clientY,dx:0};stack.setPointerCapture(e.pointerId);});
+ stack.addEventListener("pointermove",e=>{if(!drag||drag.id!==e.pointerId)return;drag.dx=e.clientX-drag.x;
+   if(Math.abs(e.clientY-drag.y)>Math.abs(drag.dx)+15){drag=null;selectFile(activeFile);return;}
+   if(YanUI.motion()){const top=cards.find(c=>Number(c.dataset.sheet)===activeFile),dx=Math.max(-55,Math.min(55,drag.dx));window.anime?.utils.remove(top);top.style.transform="translate("+dx+"px,-16px) rotate("+(-3+dx/9)+"deg)";}
+ });
+ stack.addEventListener("pointerup",e=>{if(!drag||drag.id!==e.pointerId)return;const dx=drag.dx;drag=null;selectFile((activeFile+(Math.abs(dx)>=32?(dx<0?1:2):0))%3);});
+ stack.addEventListener("pointercancel",()=>{drag=null;selectFile(activeFile);});
  if(YanUI.motion()&&window.anime){anime.animate(".hero-copy h1 span",{translateY:[12,0],opacity:[.52,1],delay:anime.stagger(55),duration:530,ease:"out(4)"});}
  const hero=document.querySelector(".hero"),stage=document.querySelector(".optic-stage");
- let frame=0,x=0,y=0;
- function move(){frame=0;stage.style.transform=YanUI.motion()?"translate("+x+"px,"+y+"px)":"none";}
- hero.onpointermove=e=>{if(e.pointerType!=="mouse"||!YanUI.motion()||!matchMedia("(min-width:661px)").matches)return;const box=hero.getBoundingClientRect();x=(.5-(e.clientX-box.left)/box.width)*7;y=(.5-(e.clientY-box.top)/box.height)*5;if(!frame)frame=requestAnimationFrame(move);};
- hero.onpointerleave=()=>{x=0;y=0;if(!frame)frame=requestAnimationFrame(move);};
+ let frame=0,x=0,y=0,lx=.7,ly=.5;
+ function move(){frame=0;hero.style.setProperty("--light-x",(lx*100).toFixed(1)+"%");hero.style.setProperty("--light-y",(ly*100).toFixed(1)+"%");stage.style.transform=YanUI.motion()?"translate("+x+"px,"+y+"px)":"none";}
+ hero.onpointermove=e=>{if(e.pointerType!=="mouse"||!YanUI.motion()||!matchMedia("(min-width:661px)").matches)return;const box=hero.getBoundingClientRect();lx=(e.clientX-box.left)/box.width;ly=(e.clientY-box.top)/box.height;hero.classList.toggle("reflect",lx>.48);x=(.5-lx)*11;y=(.5-ly)*8;if(!frame)frame=requestAnimationFrame(move);};
+ hero.onpointerleave=()=>{hero.classList.remove("reflect");x=0;y=0;if(!frame)frame=requestAnimationFrame(move);};
+ matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change",()=>{hero.onpointerleave();selectFile(activeFile);});
  fetch("/api/auth/options").then(r=>r.json()).then(o=>{
    if(!o.desktop)document.querySelectorAll(".download").forEach(a=>a.hidden=true);
    if(o.signed_in){document.querySelectorAll("[data-entry]").forEach(a=>{a.href="/studio";a.textContent="进入工作台";});const a=document.querySelector(".login");a.href="/profile.html";a.textContent="个人中心";}
