@@ -54,7 +54,7 @@ async function flush(){
  catch(e){if(e.status===409)showConflict();else{saveState("待同步");notice(e.message);clearTimeout(saveTimer);saveTimer=setTimeout(flush,7000);}}
  finally{saving=false;}
 }
-function save(){try{if(JSON.stringify(state)!==synced)localStorage.setItem(storageKey,JSON.stringify({version,content:state}));}catch{notice("本机缓冲已满，请保持页面打开并导出手稿备份。");}
+function save(){try{if(JSON.stringify(state)!==synced){saveState("待同步");localStorage.setItem(storageKey,JSON.stringify({version,content:state}));}}catch{notice("本机缓冲已满，请保持页面打开并导出手稿备份。");}
  if(conflict){showConflict();return;}clearTimeout(saveTimer);saveTimer=setTimeout(flush,350);}
 function combine(base,incoming){
  const merged=structuredClone(base||initial());const byId=new Map(merged.docs.map(d=>[d.id,d]));

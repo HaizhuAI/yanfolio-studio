@@ -11,7 +11,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse, Response, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
@@ -34,7 +34,7 @@ for router in (accounts.router,agent.router,commerce.router,control.router):
 TYPES = {"docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
 FILES_MAX = 16*1024*1024
 PUBLIC = {"/login.html","/login.js","/common.js","/style.css","/account.css","/health",
-          "/api/auth/code","/api/auth/register","/api/auth/login","/api/auth/reset"}
+          "/api/auth/code","/api/auth/register","/api/auth/login","/api/auth/reset","/api/auth/options","/desktop/download"}
 
 
 @app.middleware("http")
@@ -83,6 +83,23 @@ async def access(request, call_next):
 @app.get("/health")
 def health():
     return {"service":"yanfolio","ok":True}
+
+
+def desktop_binary():
+    return Path(os.getenv("YANFOLIO_DESKTOP_FILE",store.ROOT/"dist"/"Yanfolio.exe"))
+
+
+@app.get("/api/auth/options")
+def public_options():
+    return {"desktop":desktop_binary().is_file()}
+
+
+@app.get("/desktop/download")
+def desktop_download():
+    binary=desktop_binary()
+    if not binary.is_file():
+        raise HTTPException(404,"运营方尚未提供桌面发行包。")
+    return FileResponse(binary,filename="Yanfolio.exe",media_type="application/octet-stream")
 
 
 @app.get("/api/status")

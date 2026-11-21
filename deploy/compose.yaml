@@ -14,8 +14,10 @@ services:
       YANFOLIO_AI_BASE_URL: ${YANFOLIO_AI_BASE_URL:?Set initial model endpoint}
       YANFOLIO_AI_MODEL: ${YANFOLIO_AI_MODEL:?Set initial model name}
       YANFOLIO_AI_KEY: ${YANFOLIO_AI_KEY:-}
+      YANFOLIO_DESKTOP_FILE: /distribution/Yanfolio.exe
     volumes:
       - service:/data
+      - ../dist:/distribution:ro
   proxy:
     image: caddy:2-alpine
     restart: unless-stopped
