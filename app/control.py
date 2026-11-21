@@ -1,7 +1,7 @@
-import re
 import secrets
 from urllib.parse import urlparse
 
+import httpx
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
@@ -37,12 +37,33 @@ def save_model(body:ModelConfig,req:Request):
             mid=c.execute("INSERT INTO models(label,model,base,fee,input_rate,output_rate,max_output,enabled,secret) VALUES(?,?,?,?,?,?,?,?,?)",(*values,s.protect(body.secret or ""))).lastrowid
         else:
             mid=body.id
+            before=c.execute("SELECT base,secret FROM models WHERE id=?",(mid,)).fetchone()
+            if before and before["secret"] and urlparse(before["base"]).netloc!=url.netloc and body.secret is None:
+                raise HTTPException(422,"切换接口主机时请重新填写密钥，或明确选择清除密钥。")
             if not c.execute("UPDATE models SET label=?,model=?,base=?,fee=?,input_rate=?,output_rate=?,max_output=?,enabled=? WHERE id=?",(*values,mid)).rowcount:
                 raise HTTPException(404,"模型不存在。")
             if body.secret is not None:
                 c.execute("UPDATE models SET secret=? WHERE id=?",(s.protect(body.secret),mid))
         s.audit(c,uid,"保存模型",mid)
     return {"id":mid}
+
+
+@router.post("/models/{mid}/test")
+async def test_model(mid:int,req:Request):
+    admin(req)
+    with s.db() as c:
+        row=c.execute("SELECT base,secret,model FROM models WHERE id=?",(mid,)).fetchone()
+    if not row:
+        raise HTTPException(404,"模型不存在。")
+    token=s.reveal(row["secret"])
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            response=await client.get(row["base"]+"/models",headers={"Authorization":"Bearer "+token} if token else {})
+            response.raise_for_status()
+            found=any(m.get("id")==row["model"] for m in response.json()["data"] if isinstance(m,dict))
+    except (httpx.HTTPError,ValueError,KeyError,TypeError) as exc:
+        raise HTTPException(502,"未能读取模型列表，请核对接口、鉴权及提供方的 /models 支持。") from exc
+    return {"found":found}
 
 
 class Pack(BaseModel):
