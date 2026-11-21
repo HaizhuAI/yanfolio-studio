@@ -145,3 +145,21 @@ def test_maintenance_expiry_and_validation():
     assert not cs.object_path(f["version"]).exists() and not cs.object_path(u).exists()
     assert a.get("/api/drive/transfers").json()==[]
 
+
+def test_backup_restore_preserves_document_and_account_but_expires_sessions(tmp_path,monkeypatch):
+    from scripts.cloud_backup import backup,restore
+    import sqlite3
+    a=seed()
+    original=b"durable document"
+    f=create(a,"archive.txt",original)
+    keyfile=s.directory()/"master.key"
+    archive=tmp_path/"snapshot.zip"
+    assert backup(archive)==1
+    restored=tmp_path/"restored"
+    assert restore(archive,restored,keyfile)==1
+    monkeypatch.setenv("YANFOLIO_DATA",str(restored))
+    assert a.get("/api/drive").status_code==401
+    a.post("/api/auth/login",json={"email":"editor@example.org","password":"secure-example-password"})
+    assert a.get("/api/drive/files/"+f["file_id"]+"/download").content==original
+    assert a.get("/api/profile").json()["storage"]["used"]==len(original)
+
