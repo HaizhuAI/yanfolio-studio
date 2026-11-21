@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f6f2"><title>砚稿 Yanfolio · 学术写作工作台</title><link rel="stylesheet" href="/style.css"><script defer src="/workspace.js"></script></head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+ <div class="brand"><b class="seal" aria-hidden="true">砚</b><div><strong>砚稿</strong><span>YANFOLIO</span></div></div>
+ <button id="new" class="new"><i data-icon="plus"></i>新建手稿</button>
+ <div class="nav-label">工作空间</div>
+ <nav aria-label="工作空间"><button data-view="write" class="nav active"><i data-icon="pen"></i>论文创作</button><button data-view="search" class="nav"><i data-icon="search"></i>文献检索</button><button data-view="format" class="nav"><i data-icon="layout"></i>格式工作室</button></nav>
+ <div class="nav-label drafts-label">我的手稿</div><div id="drafts" class="drafts"></div>
+ <div class="sidebar-foot"><i data-icon="drive"></i><div>本机工作区<small>草稿保存在此浏览器</small></div></div>
+</aside>
+<div class="workspace">
+ <header class="topbar"><div><span class="crumb">工作空间</span><span class="slash">/</span><span id="breadcrumb">论文创作</span></div><span id="save-state" class="saved"><i data-icon="check"></i>已保存到本机</span></header>
+ <main>
+ <section id="view-write">
+ <div class="page-head"><div><div class="eyebrow">MANUSCRIPT STUDIO</div><h1>论文创作</h1></div><div class="head-actions"><button id="import" class="button" title="提取 Word 正文创建手稿；原稿套版可直接进入格式工作室">导入正文</button><input id="import-file" type="file" accept=".docx" hidden><button id="export" class="button"><i data-icon="download"></i>导出 Word</button></div></div>
+ <div class="writing-grid"><div class="editor-col"><article class="paper"><div class="paper-top"><span class="paper-type"><span class="small-rule"></span>研究手稿</span><small id="paper-id"></small></div>
+ <label class="sr" for="doc-title">手稿标题</label><input id="doc-title" class="doc-title" maxlength="250" placeholder="输入论文题目">
+ <div class="doc-meta"><span><i data-icon="file"></i>工作草稿</span><span id="wordcount">0 字</span></div>
+ <div class="editor-toolbar"><span><i data-icon="align"></i>正文</span><div><button id="add-h" title="在光标处插入一级标题">H1</button><button id="add-h2" title="在光标处插入二级标题">H2</button><button id="undo" title="撤销上次采纳" disabled><i data-icon="undo"></i></button></div></div>
+ <label class="sr" for="body">论文正文</label><textarea id="body" spellcheck="false" maxlength="500000" placeholder="写下你的研究问题、方法或已有发现……"></textarea>
+ <div id="bibliography"></div>
+ </article></div>
+ <aside class="inspector"><div class="assistant panel"><div class="panel-title"><span class="accent-icon"><i data-icon="spark"></i></span><h2>写作助手</h2></div><div class="charmodes" role="group" aria-label="写作任务"><button data-mode="polish" class="selected">学术润色</button><button data-mode="outline">拟定大纲</button><button data-mode="draft">段落起草</button><button data-mode="review">同行评阅</button></div><label for="prompt">写作要求</label><textarea id="prompt" maxlength="2000" rows="3" placeholder="例如，保留研究假设，精简重复表述。"></textarea><button id="generate" class="primary"><i data-icon="spark"></i>生成建议</button><small id="model-info"></small><div id="suggestion" hidden><h3>待审阅建议</h3><div id="suggest-text" tabindex="0"></div><div class="actions"><button class="button" id="accept">采纳建议</button><button class="text-btn" id="discard">忽略</button></div></div></div>
+ <div class="panel"><div class="panel-title"><i data-icon="bookmark"></i><h2>文献夹</h2><span id="library-count" class="count">0</span></div><div id="library"></div><button class="text-btn" data-view="search"><i data-icon="search"></i>检索文献</button></div>
+ </aside></div></section>
+ <section id="view-search" hidden><div class="page-head"><div><div class="eyebrow">LITERATURE SEARCH</div><h1>文献检索</h1></div></div>
+ <form id="search-form" class="panel search-panel"><label for="query">检索题名、作者、关键词或 DOI</label><div class="query-row"><i data-icon="search"></i><input id="query" placeholder="例如，城市绿地与地表温度" required maxlength="300"><button class="primary">检索</button></div><div class="filters"><label>文献来源<select id="source"><option value="all">全部索引</option><option>Crossref</option><option>OpenAlex</option><option>Europe PMC</option></select></label><label>起始年份<input id="year" type="number" min="1500" max="2200" placeholder="不限"></label></div></form>
+ <div class="results-head"><h2>检索结果</h2><span id="result-count"></span></div><div id="source-status" aria-live="polite"></div><div id="results" class="result-list"><div class="empty"><i data-icon="books"></i><h3>从一个研究问题开始</h3><p>输入关键词，从三个学术索引查找可核对的题录。</p></div></div></section>
+ <section id="view-format" hidden><div class="page-head"><div><div class="eyebrow">FORMAT STUDIO</div><h1>格式工作室</h1></div></div>
+ <div class="format-grid"><form id="format-form" class="panel"><h2>Word 原稿与格式要求</h2><button id="use-draft" type="button" class="text-btn">使用当前手稿作为原稿</button><p class="sub">可同时提供模板和文字要求。同一属性以明确识别的文字要求为准。</p>
+ <label for="manuscript">论文原稿 <span>必选 · DOCX</span></label><input class="file" type="file" name="manuscript" id="manuscript" accept=".docx" required>
+ <label for="template">格式模板 <span>DOCX / DOTX</span></label><input class="file" type="file" name="template" id="template" accept=".docx,.dotx">
+ <label for="requirements">投稿或学校要求 <span>TXT / DOCX / 文字型 PDF</span></label><input class="file" type="file" name="requirements" id="requirements" accept=".txt,.docx,.pdf">
+ <label for="instructions">补充规则</label><textarea id="instructions" name="instructions" maxlength="30000" rows="4" placeholder="正文：宋体，小四，1.5 倍行距&#10;一级标题：黑体，三号，居中&#10;上边距 2.5 cm"></textarea><button id="preview" class="primary" type="submit"><i data-icon="layout"></i>预检格式</button></form>
+ <aside class="panel report"><div class="panel-title"><i data-icon="checklist"></i><h2>预检报告</h2></div><div id="report" aria-live="polite"><p class="sub">添加原稿与模板或要求后，可预览匹配到的段落、页面设置及待确认项。</p></div><button id="apply-format" class="primary" disabled><i data-icon="download"></i>下载排版副本</button><small>在原稿副本上调整字体、字号、段落和页面。请在 Word 中复核分页、分节及复杂版式。</small></aside></div></section>
+ </main></div></div><div id="notice" role="status" hidden></div>
+</body></html>
+

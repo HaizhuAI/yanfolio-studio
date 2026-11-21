@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
-from copy import deepcopy
 from io import BytesIO
 from pathlib import PurePosixPath
 from zipfile import BadZipFile, ZipFile
@@ -15,6 +14,7 @@ NS = {"w": W}
 DOC = "word/document.xml"
 ROLES = {"body": "正文", "title": "论文标题", "h1": "一级标题", "h2": "二级标题", "h3": "三级标题", "caption": "图表题注", "ref": "参考文献条目"}
 RUN = {"rFonts": ("ascii", "hAnsi", "eastAsia", "cs"), "sz": ("val",), "szCs": ("val",)}
+HEADING_RUN = {**RUN, "b": ("val",), "bCs": ("val",)}
 PARA = {"spacing": ("before", "after", "line", "lineRule"), "ind": ("left", "right", "firstLine", "firstLineChars", "hanging", "hangingChars"), "jc": ("val",)}
 PAGE = {"pgSz": ("w", "h", "orient"), "pgMar": ("top", "right", "bottom", "left", "header", "footer", "gutter")}
 # Child order comes from the WordprocessingML schema.
@@ -153,6 +153,8 @@ def properties(container, spec):
             item = container.find(tag(kind))
             for key in attrs:
                 value = val(item, key)
+                if value is None and item is not None and kind in ("b", "bCs"):
+                    value = "1"
                 if value is not None:
                     result[(kind, key)] = value
     return result
@@ -161,9 +163,9 @@ def properties(container, spec):
 def template_profile(pkg):
     defaults = pkg.styles.find(tag("docDefaults"))
     base = {}
-    def add_parts(target, container, path=""):
+    def add_parts(target, container, path="", run_spec=RUN):
         if container is not None:
-            for kind, allowed in (("rPr", RUN), ("pPr", PARA)):
+            for kind, allowed in (("rPr", run_spec), ("pPr", PARA)):
                 target.update(properties(container.find(path + "w:" + kind, NS), allowed))
     if defaults is not None:
         for kind, allowed in (("rPr", RUN), ("pPr", PARA)):
@@ -174,14 +176,15 @@ def template_profile(pkg):
     samples = defaultdict(list)
     def sample(role, sid, p=None):
         props = dict(base)
+        run_spec = HEADING_RUN if role in ("title","h1","h2","h3") else RUN
         for node in style_chain(pkg, sid):
-            add_parts(props, node)
+            add_parts(props, node, run_spec=run_spec)
         if p is not None:
             props.update(properties(p.find(tag("pPr")), PARA))
             runs = [r for r in p.findall(tag("r")) if content(r)]
             if runs:
                 representative = max(runs, key=lambda r: len(content(r)))
-                props.update(properties(representative.find(tag("rPr")), RUN))
+                props.update(properties(representative.find(tag("rPr")), run_spec))
         samples[role].append(props)
     for role, p in classified(pkg):
         sample(role, val(p.find("w:pPr/w:pStyle", NS)), p)
@@ -280,6 +283,14 @@ def rules(text):
             if phrase in remainder:
                 props["jc","val"] = value
                 accept(phrase, phrase)
+        if "加粗" in remainder:
+            props["b","val"] = props["bCs","val"] = "1"
+            accept("加粗","加粗")
+        for phrase, key in (("段前","before"),("段后","after")):
+            match = re.search(phrase + r"\s*(\d+(?:\.\d+)?)\s*(?:磅|pt)", remainder, re.I)
+            if match and 0 <= float(match[1]) <= 100:
+                props["spacing",key] = str(round(float(match[1])*20))
+                accept(match[0],match[0])
         # Apply only complete, unambiguous clauses, so unsupported instructions never silently change other roles.
         residue = re.sub(r"字体|字号|页边距|页面|纸张|行距|使用|采用|设置为|设置|要求|纵向|号|为|的|和|与|[、，,：:\s]", "", remainder)
         if traces and not residue:
@@ -322,7 +333,7 @@ def process(original, template, instructions, preview):
         fields = profile.get(role, {})
         if not fields:
             continue
-        rvals = {k:v for k,v in fields.items() if k[0] in RUN}
+        rvals = {k:v for k,v in fields.items() if k[0] in HEADING_RUN}
         pvals = {k:v for k,v in fields.items() if k[0] in PARA}
         if pvals:
             set_values(child(p,"pPr"),pvals,P_ORDER)

@@ -21,7 +21,7 @@ PATHS = [".gitignore",".gitattributes","README.md","LICENSE","requirements.txt",
 
 def run(args, *, data=None, check=True):
     result = subprocess.run(args,cwd=ROOT,env=ENV,input=data,text=True,encoding="utf-8",errors="replace",
-                            capture_output=True,timeout=50)
+                            capture_output=True,timeout=50,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
     if check and result.returncode:
         raise RuntimeError(f"{args[0]} {args[1]} failed ({result.returncode})")
     return result

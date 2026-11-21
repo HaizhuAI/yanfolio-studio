@@ -189,6 +189,32 @@ def download(raw):
     return Response(raw,media_type=TYPES["docx"],headers={"Content-Disposition":'attachment; filename="manuscript.docx"'})
 
 
+@app.post("/api/import")
+async def import_manuscript(manuscript: UploadFile = File(...)):
+    raw = await read_file(manuscript,[".docx"])
+    def extract():
+        pkg = formatting.Package(raw)
+        title = Path(manuscript.filename).stem
+        lines = []
+        for role,p in formatting.classified(pkg):
+            value = formatting.content(p)
+            if role=="title" and not lines:
+                title = value
+            else:
+                prefix = "#" * int(role[1]) + " " if role in {"h1","h2","h3"} else ""
+                lines.append(prefix+value)
+        if not lines:
+            raise ValueError("未找到可导入的正文段落。")
+        text = "\n\n".join(lines)
+        if len(text)>500000:
+            raise ValueError("手稿正文超过 500,000 字。")
+        return {"title":title[:250],"text":text}
+    try:
+        return await run_in_threadpool(extract)
+    except ValueError as exc:
+        raise HTTPException(422,str(exc)) from exc
+
+
 @app.post("/api/export")
 def export(req: Manuscript):
     doc = Document()
