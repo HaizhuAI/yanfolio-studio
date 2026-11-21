@@ -23,7 +23,8 @@
    cards.forEach(card=>{
      const i=(Number(card.dataset.sheet)-active+3)%3,target=[{x:0,y:-16,r:-3},{x:38,y:1,r:15},{x:-38,y:1,r:-16}][i];
      card.style.zIndex=String(4-i);
-     if(YanUI.motion()&&window.anime){anime.utils.remove(card);anime.animate(card,{translateX:target.x,translateY:target.y,rotate:target.r,duration:380,ease:"out(4)"});}
+     if(window.anime)anime.utils.remove(card);
+     if(YanUI.motion()&&window.anime){anime.animate(card,{translateX:target.x,translateY:target.y,rotate:target.r,duration:380,ease:"out(4)"});}
      else card.style.transform="translate("+target.x+"px,"+target.y+"px) rotate("+target.r+"deg)";
    });
    $("file-caption").textContent=descriptions[active][0];$("file-detail").textContent=descriptions[active][1];

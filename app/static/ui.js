@@ -51,7 +51,7 @@
    close.type="button";close.setAttribute("aria-label","关闭快速导航");line.append(icon("search"),input,close);dialog.append(line,list);document.body.append(dialog);
    let visible=[],index=0,previous=null;
    function paint(){Array.from(list.querySelectorAll('[role="option"]')).forEach((row,i)=>row.setAttribute("aria-selected",i===index));if(visible.length)input.setAttribute("aria-activedescendant","jump-"+index);else input.removeAttribute("aria-activedescendant");}
-   function go(i){const r=visible[i];if(!r)return;dialog.close();if(r.view&&document.querySelector(".shell")){const button=document.querySelector('nav [data-view="'+r.view+'"]');if(button){button.click();return;}}location.assign(r.url);}
+   function go(i){const r=visible[i];if(!r)return;previous=null;dialog.close();if(r.view&&document.querySelector(".shell")){const button=document.querySelector('nav [data-view="'+r.view+'"]');if(button){button.click();return;}}location.assign(r.url);}
    function render(){const key=input.value.trim().toLowerCase();visible=routes.filter(r=>(r.name+" "+r.keys).includes(key));index=0;list.replaceChildren();
      visible.forEach((r,i)=>{const row=make("li");row.id="jump-"+i;row.setAttribute("role","option");row.append(icon(r.icon),make("span","",r.name));row.onpointerdown=e=>e.preventDefault();row.onclick=()=>go(i);list.append(row);});
      if(!visible.length)list.append(make("li","jump-empty","没有匹配的页面。"));paint();}
