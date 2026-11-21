@@ -5,7 +5,7 @@ const say=message=>{$("feedback").textContent=message;};
 function act(label,fn,cls="text-btn"){const b=el("button",label,cls);b.type="button";b.onclick=()=>Promise.resolve().then(fn).catch(e=>say(e.message));return b;}
 function link(label,url){const a=el("a",label);a.href=url;return a;}
 function source(f,v){return "/api/drive/files/"+f.id+"/download"+(v?"?version="+v:"");}
-function choose(options={}){if(abort){say("请先暂停或完成当前上传。");return;}selectMode=options;$("file-input").value="";$("file-input").click();}
+function choose(options={}){if(abort){say("请先暂停或完成当前上传。");return;}selectMode=options;$("file-input").multiple=!options.target&&!options.resume;$("file-input").value="";$("file-input").click();}
 async function nav(id,bin=false){folder=id;trash=bin;page=1;versionFile=null;$("versions-panel").hidden=true;$("query").value="";await load();}
 async function change(f,action,value=""){await YF.api("/api/drive/files/"+f.id,"POST",{action,value,expected:f.head});await load();if(versionFile===f.id&&!trash&&["restore_version","delete_version"].includes(action))await historyFor(f);else{$("versions-panel").hidden=true;versionFile=null;}}
 async function historyFor(f){
@@ -20,7 +20,7 @@ function chooseFolder(f){
  const dialog=$("move-dialog");dialog.returnValue="";dialog.onclose=()=>{if(dialog.returnValue==="ok")change(f,"move",$("destination").value).catch(e=>say(e.message));};dialog.showModal();
 }
 function fileRow(f){
- const tr=el("tr"),name=el("td",undefined,"file-name");name.append(el("strong",f.name),el("small","版本 "+f.seq+" · "+f.versions+" 份版本"));
+ const tr=el("tr"),name=el("td",undefined,"file-name");const wrap=el("div",undefined,"file-line"),text=el("div");text.append(el("strong",f.name),el("small","版本 "+f.seq+" · "+f.versions+" 份版本"));wrap.append(el("span",f.name.split(".").pop().slice(0,4).toUpperCase(),"doc-glyph"),text);name.append(wrap);
  const actions=el("div",undefined,"file-actions");
  if(trash){actions.append(act("还原",()=>{const n=prompt("还原后的文件名",f.name);if(n)return change(f,"restore",n);}),act("永久删除",()=>{if(confirm("永久删除此文件及所有版本？"))return change(f,"purge");}));}
  else{
@@ -39,6 +39,7 @@ async function load(){
  $("folder-actions").hidden=!folder||trash;
  $("location").textContent=trash?"回收站":folder?d.folders.find(f=>f.id===folder)?.name||"文件夹":"根目录";
  $("upload").disabled=!!abort||trash||!d.storage.uploads_enabled;$("upload").textContent=d.storage.uploads_enabled?"上传文档":"上传已暂停";
+ $("drop-hint").hidden=trash||!d.storage.uploads_enabled;
  $("quota-label").textContent=fmt(d.storage.used)+" / "+fmt(d.storage.quota);$("meter").value=d.storage.quota?100*d.storage.used/d.storage.quota:0;
  $("usage-detail").textContent="回收站 "+fmt(d.storage.trash)+" · 传输预留 "+fmt(d.storage.reserved);
  $("items").replaceChildren(...d.files.map(fileRow));if(!d.files.length){const r=el("tr"),c=el("td",trash?"回收站为空。":$("query").value?"没有匹配的文件。":"这里还没有文档。");c.colSpan=4;r.append(c);$("items").append(r);}
@@ -49,12 +50,31 @@ async function load(){
 $("root").onclick=()=>nav("").catch(e=>say(e.message));$("trash").onclick=()=>nav("",true).catch(e=>say(e.message));$("prev").onclick=()=>{page--;load().catch(e=>say(e.message));};$("next").onclick=()=>{page++;load().catch(e=>say(e.message));};
 $("search").onsubmit=e=>{e.preventDefault();page=1;load().catch(err=>say(err.message));};$("new-folder").onclick=async()=>{const n=prompt("文件夹名称");if(!n)return;try{const f=await YF.api("/api/drive/folders","POST",{name:n});await nav(f.id);}catch(e){say(e.message);}};
 $("close-versions").onclick=()=>{$("versions-panel").hidden=true;versionFile=null;};$("logout").onclick=YF.logout;$("upload").onclick=()=>choose();$("pause").onclick=()=>abort?.abort();
-$("file-input").onchange=async()=>{
- const file=$("file-input").files[0];if(!file)return;abort=new AbortController();$("upload").disabled=true;$("transfer-progress").hidden=false;say("");
- try{await YanfolioDrive.upload(file,{...selectMode,folder,signal:abort.signal,progress:(n,total)=>{$("transfer-text").textContent=file.name+" · "+fmt(n)+" / "+fmt(total);$("transfer-meter").value=n*100/total;}});
- say("已保存到云文档。");}catch(e){say(e.name==="AbortError"?"上传已暂停，可在上传任务中继续。":e.message);}finally{abort=null;$("transfer-progress").hidden=true;await load().catch(e=>say(e.message));}
-};
-async function start(){const u=await YF.api("/api/me");YF.account=u.id;await load();}
+async function sendFiles(files,options={}){
+ if(!files.length||abort)return;
+ if(trash||!library?.storage.uploads_enabled){say("当前无法上传文件。");return;}
+ const dest=folder;abort=new AbortController();$("upload").disabled=true;$("transfer-progress").hidden=false;say("");
+ let finished=0;
+ try{
+  for(const file of files){
+   await YanfolioDrive.upload(file,{...options,folder:dest,signal:abort.signal,progress:(n,total)=>{
+    $("transfer-text").textContent=file.name+" · "+fmt(n)+" / "+fmt(total);$("transfer-meter").value=n*100/total;
+   }});
+   finished++;
+  }
+  say("已保存 "+finished+" 份文档。");
+ }catch(e){say((finished?"已保存 "+finished+" 份。":"")+(e.name==="AbortError"?"上传已暂停，当前文件可在上传任务中继续。":e.message));}
+ finally{abort=null;$("transfer-progress").hidden=true;await load().catch(e=>say(e.message));}
+}
+$("file-input").onchange=()=>sendFiles(Array.from($("file-input").files),selectMode);
+const drop=document.querySelector(".library-main");let dragDepth=0;
+function isFileDrag(e){return Array.from(e.dataTransfer?.types||[]).includes("Files");}
+drop.addEventListener("dragenter",e=>{if(isFileDrag(e)){e.preventDefault();dragDepth++;if(!abort&&!trash&&library?.storage.uploads_enabled)drop.classList.add("drag-over");}});
+drop.addEventListener("dragover",e=>{if(isFileDrag(e)){e.preventDefault();e.dataTransfer.dropEffect=abort||trash||!library?.storage.uploads_enabled?"none":"copy";}});
+drop.addEventListener("dragleave",()=>{dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)drop.classList.remove("drag-over");});
+drop.addEventListener("drop",e=>{if(!isFileDrag(e))return;e.preventDefault();dragDepth=0;drop.classList.remove("drag-over");sendFiles(Array.from(e.dataTransfer.files));});
+async function start(){const u=await YF.api("/api/me");YF.account=u.id;const id=new URLSearchParams(location.search).get("folder")||"";
+ if(id){const root=await YF.api("/api/drive");if(root.folders.some(f=>f.id===id))folder=id;}await load();}
 start().catch(e=>say(e.message));document.addEventListener("visibilitychange",()=>{if(!document.hidden&&YF.account&&!abort)load().catch(e=>say(e.message));});
 
 

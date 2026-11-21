@@ -53,7 +53,10 @@ def profile(req:Request):
         devices=[dict(x) for x in c.execute("""SELECT i.device,i.label,i.created,t.expires,t.token=? AS current
                   FROM sessions t JOIN session_info i ON t.token=i.token WHERE t.uid=? AND t.expires>? ORDER BY current DESC,i.created DESC""",(this,user["id"],s.now()))]
         count=c.execute("SELECT count(*) FROM cloud_files WHERE uid=? AND trashed IS NULL",(user["id"],)).fetchone()[0]
-        return {**s.public_user(user),"created":user["created"],"profile":dict(card) if card else {"name":"","institution":"","discipline":""},
+        recent=[dict(row) for row in c.execute("""SELECT f.name,f.folder,f.modified,v.bytes FROM cloud_files f
+                JOIN cloud_versions v ON v.id=f.head WHERE f.uid=? AND f.trashed IS NULL
+                ORDER BY f.modified DESC,f.id LIMIT 3""",(user["id"],))]
+        return {"recent_files":recent,**s.public_user(user),"created":user["created"],"profile":dict(card) if card else {"name":"","institution":"","discipline":""},
                 "storage":cs.usage(c,user["id"]),"file_count":count,"devices":devices}
 
 

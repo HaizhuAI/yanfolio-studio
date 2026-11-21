@@ -16,7 +16,7 @@ async function load(){state=await YF.api("/api/admin/overview?q="+encodeURICompo
  table("users",["邮箱","角色","点数","状态",""],state.users.map(u=>[u.email,u.role==="admin"?"管理员":"用户",u.balance,u.active?"正常":"停用",u.role==="admin"?"—":button(u.active?"停用":"启用",async()=>{if(!confirm("更改 "+u.email+" 的账号状态？"))return;await YF.api("/api/admin/users/"+u.id+"/state","POST",{active:!u.active});await load();})]));
  table("audit",["时间","管理员","操作","对象"],state.audit.map(a=>[YF.date(a.created),a.email,a.action,a.subject]));
 }
-document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-tab]").forEach(x=>{x.classList.toggle("selected",x===b);$("tab-"+x.dataset.tab).hidden=x!==b;});msg("");});
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-tab]").forEach(x=>{x.classList.toggle("selected",x===b);x.setAttribute("aria-pressed",x===b);$("tab-"+x.dataset.tab).hidden=x!==b;});YanUI.enter($("tab-"+b.dataset.tab));msg("");});
 function form(id,fn){$(id).onsubmit=async e=>{e.preventDefault();const btn=e.target.querySelector("button");btn.disabled=true;try{await fn(e.target);await load();}catch(err){msg(err.message);}finally{btn.disabled=false;}};}
 $("new-model").onclick=()=>editModel(null);$("new-pack").onclick=()=>editPack(null);
 form("model-form",async f=>{const d=Object.fromEntries(new FormData(f));for(const k of ["fee","input_rate","output_rate","max_output"])d[k]=Number(d[k]);d.enabled=d.enabled==="1";d.id=modelId;d.secret=d.key_action==="clear"?"":d.secret||null;delete d.key_action;const r=await YF.api("/api/admin/models","POST",d);modelId=r.id;f.elements.secret.value="";msg("已保存模型配置。");});
