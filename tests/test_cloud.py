@@ -32,6 +32,11 @@ def test_public_page_private_account_and_sessions():
     guest=new_client()
     assert "从文献笔记" in guest.get("/").text
     assert guest.get("/yanfolio-field.webp").headers["content-type"]=="image/webp"
+    for path,mime in (("/yanfolio-optic.webp","image/webp"),("/geist.woff2","font/woff2"),("/ui.css","text/css")):
+        res=guest.get(path,follow_redirects=False)
+        assert res.status_code==200 and res.headers["content-type"].startswith(mime)
+    for path in ("/ui.js","/anime.min.js","/yanfolio.ico","/geist-license.txt"):
+        assert guest.get(path,follow_redirects=False).status_code==200
     assert guest.get("/profile.html",follow_redirects=False).status_code==303
     assert guest.get("/api/drive").status_code==401
     user=seed()
@@ -81,6 +86,8 @@ def test_upload_resume_two_clients_private_download_and_orphan_tail(monkeypatch)
     assert b.get(path+"/versions").status_code==404
     assert b.post(path,json={"action":"trash","expected":u}).status_code==404
     assert b.get("/api/drive?q=甲").json()["total"]==0
+    assert a.get("/api/profile").json()["recent_files"][0]["name"]=="甲.txt"
+    assert b.get("/api/profile").json()["recent_files"]==[]
 
 
 def test_quota_atomic_reservations_and_upload_pause():
