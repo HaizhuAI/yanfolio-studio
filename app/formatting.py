@@ -81,6 +81,24 @@ class Package:
     def paragraphs(self):
         return self.doc.xpath("/w:document/w:body/w:p", namespaces=NS)
 
+    def theme_fonts(self):
+        theme_path = "word/theme/theme1.xml"
+        if theme_path not in self.zip.namelist():
+            return {}
+        a = {"a":"http://schemas.openxmlformats.org/drawingml/2006/main"}
+        theme = xml(self.zip.read(theme_path))
+        result = {}
+        for group in ("major","minor"):
+            block = theme.find(f".//a:fontScheme/a:{group}Font",a)
+            if block is None:
+                continue
+            for suffix, element in (("Ascii","latin"),("HAnsi","latin"),("Bidi","cs"),("EastAsia","ea")):
+                family = block.find("a:"+element,a)
+                name = family.get("typeface") if family is not None else None
+                if name:
+                    result[group+suffix] = name
+        return result
+
     def save(self):
         out = BytesIO()
         with ZipFile(out, "w") as dest:
@@ -136,23 +154,32 @@ def role_of(pkg, p, text, references):
 
 def classified(pkg):
     refs = False
+    first = True
     for p in pkg.paragraphs():
         text = content(p)
         if not text:
             continue
         role = role_of(pkg, p, text, refs)
+        if first and role=="body" and len(text)<=100:
+            large = any(s.isdigit() and int(s)>=32 for s in p.xpath("w:r/w:rPr/w:sz/@w:val",namespaces=NS))
+            if text in ("论文题目","论文标题","文章题目") or (large and val(p.find("w:pPr/w:jc",NS))=="center"):
+                role="title"
+        first=False
         if role.startswith("h"):
             refs = bool(re.fullmatch(r"参考文献|references", text, re.I))
         yield role, p
 
 
-def properties(container, spec):
+def properties(container, spec, theme=None):
     result = {}
     if container is not None:
         for kind, attrs in spec.items():
             item = container.find(tag(kind))
             for key in attrs:
                 value = val(item, key)
+                if kind=="rFonts" and theme:
+                    ref = val(item, key+"Theme") or (val(item,"cstheme") if key=="cs" else None)
+                    value = theme.get(ref,value)
                 if value is None and item is not None and kind in ("b", "bCs"):
                     value = "1"
                 if value is not None:
@@ -162,14 +189,15 @@ def properties(container, spec):
 
 def template_profile(pkg):
     defaults = pkg.styles.find(tag("docDefaults"))
+    theme = pkg.theme_fonts()
     base = {}
     def add_parts(target, container, path="", run_spec=RUN):
         if container is not None:
             for kind, allowed in (("rPr", run_spec), ("pPr", PARA)):
-                target.update(properties(container.find(path + "w:" + kind, NS), allowed))
+                target.update(properties(container.find(path + "w:" + kind, NS), allowed, theme))
     if defaults is not None:
         for kind, allowed in (("rPr", RUN), ("pPr", PARA)):
-            base.update(properties(defaults.find(f"w:{kind}Default/w:{kind}", NS), allowed))
+            base.update(properties(defaults.find(f"w:{kind}Default/w:{kind}", NS), allowed, theme))
     default_style = next((val(s, "styleId") for s in pkg.nodes.values() if val(s, "type") == "paragraph" and val(s, "default") == "1"), "Normal")
     for node in style_chain(pkg, default_style):
         add_parts(base, node)
@@ -184,7 +212,7 @@ def template_profile(pkg):
             runs = [r for r in p.findall(tag("r")) if content(r)]
             if runs:
                 representative = max(runs, key=lambda r: len(content(r)))
-                props.update(properties(representative.find(tag("rPr")), run_spec))
+                props.update(properties(representative.find(tag("rPr")), run_spec, theme))
         samples[role].append(props)
     for role, p in classified(pkg):
         sample(role, val(p.find("w:pPr/w:pStyle", NS)), p)
