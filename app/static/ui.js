@@ -36,6 +36,7 @@
      {name:"论文创作",icon:"pen",url:"/studio",keys:"writing write lunwen",view:"write"},
      {name:"文献检索",icon:"search",url:"/studio?view=search",keys:"search literature wenxian",view:"search"},
      {name:"格式工作室",icon:"layout",url:"/studio?view=format",keys:"format word geshi",view:"format"},
+     {name:"PPT 制作",icon:"desktop",url:"/slides",keys:"ppt slides presentation 演示 幻灯片"},
      {name:"我的云文档",icon:"folder",url:"/drive.html",keys:"files cloud wendang"},
      {name:"个人中心",icon:"user",url:"/profile.html",keys:"profile account geren"},
      {name:"点数钱包",icon:"wallet",url:"/wallet.html",keys:"wallet credits qianbao"}

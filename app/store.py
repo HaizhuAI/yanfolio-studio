@@ -112,7 +112,8 @@ def init():
         c.execute("PRAGMA journal_mode=WAL")
         from . import cloud_store
         from .slides import SCHEMA as slide_schema
-        c.executescript(SCHEMA + cloud_store.SCHEMA + slide_schema)
+        from .appearance import SCHEMA as appearance_schema
+        c.executescript(SCHEMA + cloud_store.SCHEMA + slide_schema + appearance_schema)
         cloud_store.prepare_volume()
     with db(True) as c:
         if not c.execute("SELECT 1 FROM models").fetchone():

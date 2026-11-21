@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from pypdf import PdfReader
 from starlette.concurrency import run_in_threadpool
 
-from . import formatting, literature, accounts, agent, commerce, control, store, cloud, cloud_control, cloud_store, slides
+from . import formatting, literature, accounts, agent, commerce, control, store, cloud, cloud_control, cloud_store, slides, appearance
 from .agent import Manuscript
 
 @asynccontextmanager
@@ -55,14 +55,15 @@ async def invalid_fields(request, exc):
     return JSONResponse({"detail":"输入字段格式有误："+fields},422)
 
 
-for router in (accounts.router,agent.router,commerce.router,control.router,cloud.router,cloud_control.router,slides.router):
+for router in (accounts.router,agent.router,commerce.router,control.router,cloud.router,cloud_control.router,slides.router,appearance.router):
     app.include_router(router)
 TYPES = {"docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}
 FILES_MAX = 16*1024*1024
 mimetypes.add_type("image/webp",".webp")
 mimetypes.add_type("font/woff2",".woff2")
 mimetypes.add_type("image/x-icon",".ico")
-PUBLIC = {"/ui.css","/ui.js","/anime.min.js","/yanfolio-optic.webp","/yanfolio.ico","/geist.woff2","/geist-license.txt","/","/landing.css","/landing.js","/yanfolio-field.webp","/login.html","/login.js","/common.js","/style.css","/account.css","/health",
+PUBLIC_FONTS={"/fonts/noto-sans-sc.woff2","/fonts/noto-serif-sc.woff2","/fonts/noto-sans-sc-OFL.txt","/fonts/noto-serif-sc-OFL.txt"}
+PUBLIC = PUBLIC_FONTS | {"/appearance.js","/appearance.css","/ui.css","/ui.js","/anime.min.js","/yanfolio-optic.webp","/yanfolio.ico","/geist.woff2","/geist-license.txt","/","/landing.css","/landing.js","/yanfolio-field.webp","/login.html","/login.js","/common.js","/style.css","/account.css","/health",
           "/api/auth/code","/api/auth/register","/api/auth/login","/api/auth/reset","/api/auth/options","/desktop/download"}
 
 
@@ -105,7 +106,7 @@ async def access(request, call_next):
     response=await call_next(request)
     response.headers["X-Content-Type-Options"]="nosniff"
     response.headers["Referrer-Policy"]="no-referrer"
-    response.headers["Cache-Control"]="no-store"
+    response.headers["Cache-Control"]=("public, max-age=31536000, immutable" if path in PUBLIC_FONTS and request.query_params.get("v")=="06bfe0d6" else "no-store")
     response.headers["Content-Security-Policy"]="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
     return response
 
