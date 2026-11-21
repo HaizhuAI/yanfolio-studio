@@ -1,0 +1,13 @@
+**
+!requirements.txt
+!app/
+!app/*.py
+!app/static/
+!app/static/*.js
+!app/static/*.css
+!app/static/*.html
+!scripts/
+!scripts/create_admin.py
+!deploy/
+!deploy/Dockerfile
+

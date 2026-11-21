@@ -1,0 +1,32 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    environment:
+      YANFOLIO_PUBLIC_URL: https://${YANFOLIO_DOMAIN:?Set your domain}
+      YANFOLIO_SMTP_HOST: ${YANFOLIO_SMTP_HOST:?Set SMTP host}
+      YANFOLIO_SMTP_PORT: ${YANFOLIO_SMTP_PORT:-465}
+      YANFOLIO_MAIL_FROM: ${YANFOLIO_MAIL_FROM:?Set sender address}
+      YANFOLIO_SMTP_USER: ${YANFOLIO_SMTP_USER:-}
+      YANFOLIO_SMTP_PASSWORD: ${YANFOLIO_SMTP_PASSWORD:-}
+      YANFOLIO_AI_BASE_URL: ${YANFOLIO_AI_BASE_URL:?Set initial model endpoint}
+      YANFOLIO_AI_MODEL: ${YANFOLIO_AI_MODEL:?Set initial model name}
+      YANFOLIO_AI_KEY: ${YANFOLIO_AI_KEY:-}
+    volumes:
+      - service:/data
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80","443:443"]
+    environment:
+      DOMAIN: ${YANFOLIO_DOMAIN:?Set your domain}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - certs:/data
+    depends_on: [app]
+volumes:
+  service:
+  certs:
+
