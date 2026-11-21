@@ -1,0 +1,1 @@
+"""Yanfolio academic writing workspace."""
